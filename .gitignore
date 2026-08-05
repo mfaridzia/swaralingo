@@ -1,0 +1,23 @@
+# Dependencies & Build Outputs
+node_modules/
+dist/
+build/
+.next/
+.expo/
+
+# Environment Secrets (SANGAT RAHASIA - DILARANG COMMIT)
+.env
+.env.local
+.env.*.local
+
+# AI Temporary Scratchpad (Eksperimen Sementara)
+scratch/
+.ai/scratch/
+
+# Logs & OS Junk
+*.log
+npm-debug.log*
+yarn-debug.log*
+bun.lockb
+.DS_Store
+thumbs.db
