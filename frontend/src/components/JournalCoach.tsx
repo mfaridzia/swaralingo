@@ -40,9 +40,18 @@ export const JournalCoach: React.FC = () => {
   const savedUser = localStorage.getItem('fluency_user');
   const userId = savedUser ? JSON.parse(savedUser).id : null;
 
-  // Fetch journal prompt on mount
+  // Fetch journal prompt on mount — pakai cache dulu (hindari tembakan Gemini tiap refresh).
+  // Prompt di-reset setelah user menulis jurnal, lalu generate yang baru.
+  const PROMPT_CACHE_KEY = `fluency_journal_prompt_${userId}`;
+
   useEffect(() => {
-    fetchPrompt();
+    const cached = localStorage.getItem(PROMPT_CACHE_KEY);
+    if (cached) {
+      setCurrentPrompt(cached);
+    } else {
+      fetchPrompt();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update word counter
@@ -71,6 +80,7 @@ export const JournalCoach: React.FC = () => {
       const data = await res.json();
       if (data.success && data.prompt) {
         setCurrentPrompt(data.prompt);
+        localStorage.setItem(PROMPT_CACHE_KEY, data.prompt);
       }
     } catch (e) {
       console.error(e);
@@ -91,6 +101,9 @@ export const JournalCoach: React.FC = () => {
       if (resData.success) {
         queryClient.invalidateQueries({ queryKey: ['journals', userId] });
         setJournalContent("");
+        // Prompt sudah dijawab → buang cache, generate prompt baru (sekali saja, bukan tiap refresh)
+        localStorage.removeItem(PROMPT_CACHE_KEY);
+        fetchPrompt();
       } else {
         alert(resData.error || "Failed to save journal entry.");
       }
