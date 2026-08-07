@@ -3,6 +3,10 @@ dotenv.config();
 
 import { getContext } from 'hono/context-storage';
 
+// Deteksi runtime: bun:sqlite & filesystem lokal hanya ada di runtime Bun.
+// workerd (wrangler dev maupun deploy) → Turso + R2. NODE_ENV dari [vars] tidak reliable di wrangler dev.
+export const isBunRuntime = typeof process !== 'undefined' && Boolean((process.versions as any)?.bun);
+
 export const PORT = process.env.PORT || 3000;
 
 export function getEnvVar(key: string): string {

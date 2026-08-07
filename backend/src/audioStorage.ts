@@ -1,9 +1,9 @@
-import * as fs from 'node:fs/promises';
+// node:path didukung workerd (nodejs_compat); node:fs TIDAK — dynamic import di LocalAudioStorage
 import * as path from 'node:path';
 import { getContext } from 'hono/context-storage';
+import { isBunRuntime } from './config.js';
 import type { R2Bucket } from '@cloudflare/workers-types';
 
-const isProd = process.env.NODE_ENV === 'production';
 const AUDIO_DIR = path.join(process.cwd(), 'audio');
 
 // Key format: audio/{userId}/{uuid}.webm — mencegah path traversal & key tidak valid
@@ -52,7 +52,13 @@ class R2AudioStorage implements AudioStorage {
 }
 
 class LocalAudioStorage implements AudioStorage {
+  // node:fs tidak ada di workerd — import dinamis, hanya dieksekusi di runtime Bun
+  private async fs() {
+    return await import('node:fs/promises');
+  }
+
   async put(key: string, data: ArrayBuffer, _contentType: string): Promise<void> {
+    const fs = await this.fs();
     const full = path.join(AUDIO_DIR, key);
     await fs.mkdir(path.dirname(full), { recursive: true });
     await fs.writeFile(full, Buffer.from(data));
@@ -60,6 +66,7 @@ class LocalAudioStorage implements AudioStorage {
 
   async get(key: string): Promise<StoredAudio | null> {
     try {
+      const fs = await this.fs();
       const fh = await fs.open(path.join(AUDIO_DIR, key), 'r');
       return { body: fh.readableWebStream() as unknown as ReadableStream<Uint8Array>, contentType: 'audio/webm' };
     } catch {
@@ -69,6 +76,7 @@ class LocalAudioStorage implements AudioStorage {
 
   async delete(key: string): Promise<void> {
     try {
+      const fs = await this.fs();
       await fs.unlink(path.join(AUDIO_DIR, key));
     } catch {
       // File tidak ada — abaikan
@@ -77,5 +85,6 @@ class LocalAudioStorage implements AudioStorage {
 }
 
 export function getAudioStorage(): AudioStorage {
-  return isProd ? new R2AudioStorage() : new LocalAudioStorage();
+  // Bun (local dev) → filesystem; workerd (wrangler dev / deploy) → R2
+  return isBunRuntime ? new LocalAudioStorage() : new R2AudioStorage();
 }

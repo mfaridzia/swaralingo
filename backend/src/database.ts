@@ -1,13 +1,15 @@
 import { createClient } from "@libsql/client";
-import { getEnvVar } from "./config.js";
+import { getEnvVar, isBunRuntime } from "./config.js";
 
-const isProd = process.env.NODE_ENV === 'production';
+// Runtime Bun (local dev) → bun:sqlite; workerd (wrangler dev / deploy) → Turso.
+// NODE_ENV dari [vars] tidak diandalkan karena tidak reliable di wrangler dev.
+const useLocalDb = isBunRuntime;
 
 let localDb: any = null;
 let tursoClient: any = null;
 
 const getTursoClient = () => {
-  if (isProd) {
+  if (!useLocalDb) {
     if (!tursoClient) {
       const url = getEnvVar("TURSO_DATABASE_URL");
       const authToken = getEnvVar("TURSO_AUTH_TOKEN");
@@ -29,15 +31,21 @@ const getTursoClient = () => {
   return null;
 };
 
-if (!isProd) {
-  const bunSqliteLib = "bun:sqlite";
-  const { Database } = await import(bunSqliteLib);
-  localDb = new Database("sqlite.db", { create: true });
+if (useLocalDb) {
+  try {
+    const bunSqliteLib = "bun:sqlite";
+    const { Database } = await import(bunSqliteLib);
+    localDb = new Database("sqlite.db", { create: true });
+  } catch (e) {
+    // Runtime Bun tanpa bun:sqlite — luar biasa, biarkan useLocalDb tetap true tapi localDb null
+    // dan method db melempar error jelas daripada crash saat import.
+    console.warn("bun:sqlite unavailable, database calls will fail:", e);
+  }
 }
 
 export const db = {
   run: async (sql: string, ...params: any[]): Promise<any> => {
-    if (isProd) {
+    if (!useLocalDb) {
       return await getTursoClient().execute({ sql, args: params });
     } else {
       return localDb!.run(sql, ...params);
@@ -47,7 +55,7 @@ export const db = {
   query: (sql: string) => {
     return {
       all: async (...params: any[]): Promise<any[]> => {
-        if (isProd) {
+        if (!useLocalDb) {
           const res = await getTursoClient().execute({ sql, args: params });
           return res.rows as any[];
         } else {
@@ -55,7 +63,7 @@ export const db = {
         }
       },
       get: async (...params: any[]): Promise<any | undefined> => {
-        if (isProd) {
+        if (!useLocalDb) {
           const res = await getTursoClient().execute({ sql, args: params });
           return res.rows[0] as any;
         } else {
@@ -68,7 +76,7 @@ export const db = {
   prepare: (sql: string) => {
     return {
       run: async (...params: any[]): Promise<{ lastInsertRowid: number | null, changes: number }> => {
-        if (isProd) {
+        if (!useLocalDb) {
           const res = await getTursoClient().execute({ sql, args: params });
           const rowId = typeof res.lastInsertRowid === 'bigint' 
             ? Number(res.lastInsertRowid) 
@@ -89,7 +97,7 @@ export const db = {
         }
       },
       get: async (...params: any[]): Promise<any | undefined> => {
-        if (isProd) {
+        if (!useLocalDb) {
           const res = await getTursoClient().execute({ sql, args: params });
           return res.rows[0] as any;
         } else {
@@ -97,7 +105,7 @@ export const db = {
         }
       },
       all: async (...params: any[]): Promise<any[]> => {
-        if (isProd) {
+        if (!useLocalDb) {
           const res = await getTursoClient().execute({ sql, args: params });
           return res.rows as any[];
         } else {

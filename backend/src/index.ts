@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { PORT, CORS_ORIGIN } from './config.js';
+import { PORT, CORS_ORIGIN, isBunRuntime } from './config.js';
 
 import authRouter from './routes/auth.js';
 import logsRouter from './routes/logs.js';
@@ -16,7 +16,8 @@ import { initDB } from './database.js';
 
 import { contextStorage } from 'hono/context-storage';
 
-if (process.env.NODE_ENV !== 'production') {
+// initDB otomatis hanya di runtime Bun (local dev). workerd (wrangler dev / deploy) → manual /api/init-db (ADR-043).
+if (isBunRuntime) {
   await initDB();
 }
 
