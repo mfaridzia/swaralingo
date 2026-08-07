@@ -11,7 +11,8 @@ if (isProd) {
     authToken: process.env.TURSO_AUTH_TOKEN || '',
   });
 } else {
-  const { Database } = await import("bun:sqlite");
+  const bunSqliteLib = "bun:sqlite";
+  const { Database } = await import(bunSqliteLib);
   localDb = new Database("sqlite.db", { create: true });
 }
 
