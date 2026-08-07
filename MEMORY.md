@@ -60,6 +60,7 @@
 - **ADR-046**: Konfigurasi rewrite routing di `vercel.json` (`source: "/(.*)" -> "/index.html"`) untuk mengatasi error 404 pada saat hard-refresh di routing SPA React Router.
 - **ADR-047**: Mengintegrasikan Cloudflare Web Analytics tracking script dan konfigurasi `[observability]` logs di `wrangler.toml` untuk pengumpulan metrik performa serta penelusuran logs secara persisten.
 - **ADR-048**: Transkripsi audio via **Cloudflare Workers AI Whisper** (`@cf/openai/whisper-large-v3-turbo`, binding `[ai] AI`) sebagai jalur utama — gratis, kuota lepas dari Gemini. Fallback otomatis ke Gemini `gemini-3.5-flash-lite` saat binding AI tidak tersedia (local `bun dev`) atau Whisper gagal. Format webm/wav/mp3/ogg/flac/m4a didukung, max 25MB.
+- **ADR-049**: Fix `wrangler dev` crash ("No such module bun:sqlite") dengan deteksi runtime `isBunRuntime` (`process.versions.bun`) di config.ts — pengganti gate `NODE_ENV === 'production'` yang tidak reliable di wrangler dev (known bug cloudflare/workers-sdk#7886). Seleksi DB (bun:sqlite vs Turso), storage (filesystem vs R2), dan initDB otomatis kini berbasis runtime. `node:fs` di audioStorage.ts di-dynamic-import karena tidak didukung workerd (node:path OK).
 
 ## 🎨 Design System & UI Updates
 
