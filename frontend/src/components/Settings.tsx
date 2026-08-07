@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Save, ShieldAlert, Bell, BellOff } from 'lucide-react';
-import { API_URL } from '../config';
+import { apiFetch } from '../api';
 import type { UserProfile } from './Auth';
 
 interface SettingsProps {
@@ -175,7 +175,6 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
 
     try {
       let payload: any = {
-        userId: user.id,
         name,
         target_language: targetLanguage
       };
@@ -184,7 +183,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
         payload.password = await MathSha256(password);
       }
 
-      const response = await fetch(`${API_URL}/auth/update-profile`, {
+      const response = await apiFetch('/auth/update-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

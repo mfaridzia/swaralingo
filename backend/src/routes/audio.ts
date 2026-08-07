@@ -1,15 +1,16 @@
 import { Hono } from 'hono';
 import { getAudioStorage, isValidAudioKey, keyUserId } from '../audioStorage.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const audioRouter = new Hono();
 
-// POST /api/audio?userId=1 — body binary mentah (Blob dari MediaRecorder)
+// Identitas dari session token — ownership check vs key, bukan userId query client (menutup IDOR)
+audioRouter.use('*', requireAuth);
+
+// POST /api/audio — body binary mentah (Blob dari MediaRecorder)
 audioRouter.post('/', async (c) => {
   try {
-    const userId = c.req.query('userId');
-    if (!userId || !/^\d+$/.test(userId)) {
-      return c.json({ success: false, error: 'Unauthorized: Missing userId parameter' }, 400);
-    }
+    const userId = String(c.get('authUserId'));
 
     const contentType = c.req.header('Content-Type') || 'audio/webm';
     if (!contentType.startsWith('audio/')) {
@@ -30,7 +31,7 @@ audioRouter.post('/', async (c) => {
   }
 });
 
-// GET /api/audio/audio/{userId}/{uuid}.webm?userId=1 — wildcard karena key mengandung slash
+// GET /api/audio/audio/{userId}/{uuid}.webm — wildcard karena key mengandung slash
 audioRouter.get('/*', async (c) => {
   try {
     const key = decodeURIComponent(c.req.path.slice('/api/audio/'.length));
@@ -38,8 +39,8 @@ audioRouter.get('/*', async (c) => {
       return c.json({ success: false, error: 'Invalid audio key' }, 400);
     }
 
-    const userId = c.req.query('userId');
-    if (!userId || keyUserId(key) !== userId) {
+    const userId = String(c.get('authUserId'));
+    if (keyUserId(key) !== userId) {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
@@ -62,7 +63,7 @@ audioRouter.get('/*', async (c) => {
   }
 });
 
-// DELETE /api/audio/audio/{userId}/{uuid}.webm?userId=1 — pembersihan orphan jika save log gagal
+// DELETE /api/audio/audio/{userId}/{uuid}.webm — pembersihan orphan jika save log gagal
 audioRouter.delete('/*', async (c) => {
   try {
     const key = decodeURIComponent(c.req.path.slice('/api/audio/'.length));
@@ -70,8 +71,8 @@ audioRouter.delete('/*', async (c) => {
       return c.json({ success: false, error: 'Invalid audio key' }, 400);
     }
 
-    const userId = c.req.query('userId');
-    if (!userId || keyUserId(key) !== userId) {
+    const userId = String(c.get('authUserId'));
+    if (keyUserId(key) !== userId) {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 

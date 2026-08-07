@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Mail, User, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { API_URL, GOOGLE_CLIENT_ID } from "../config";
+import { apiFetch, setToken } from "../api";
 
 // Typings for Google Identity Services SDK on window object
 declare global {
@@ -42,7 +43,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       setIsLoading(true);
 
       try {
-        const res = await fetch(`${API_URL}/auth/google`, {
+        const res = await apiFetch("/auth/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ credential: response.credential }),
@@ -50,6 +51,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         const resData = await res.json();
 
         if (res.ok && resData.success) {
+          if (resData.data.token) setToken(resData.data.token);
           onLogin(resData.data);
         } else {
           setErrorMsg(resData.error || "Google Sign-In failed");
@@ -108,7 +110,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         ? { email, password: clientSideHash }
         : { email, name, password: clientSideHash };
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -117,6 +119,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       const resData = await response.json();
 
       if (response.ok && resData.success) {
+        if (resData.data.token) setToken(resData.data.token);
         onLogin(resData.data);
       } else {
         setErrorMsg(resData.error || "Autentikasi gagal. Silakan coba lagi.");

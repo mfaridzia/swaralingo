@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { OAuth2Client } from 'google-auth-library';
 import db from '../database.js';
 import { authRateLimiter } from '../middleware/rateLimiter.js';
+import { requireAuth, signToken } from '../middleware/auth.js';
 import { getEnvVar } from '../config.js';
 
 const authRouter = new Hono();
@@ -97,7 +98,7 @@ authRouter.post('/google', authRateLimiter, async (c) => {
           const info = await stmt.run(mockEmail, mockName, 'GOOGLE_AUTH_EXTERNAL');
           user = { id: info.lastInsertRowid, name: mockName, email: mockEmail, target_language: 'English' };
         }
-        return c.json({ success: true, data: user });
+        return c.json({ success: true, data: { ...user, token: await signToken(user.id) } });
       }
       throw verifyErr;
     }
@@ -115,7 +116,7 @@ authRouter.post('/google', authRateLimiter, async (c) => {
       user = { id: info.lastInsertRowid, name, email, target_language: 'English' };
     }
 
-    return c.json({ success: true, data: user });
+    return c.json({ success: true, data: { ...user, token: await signToken(user.id) } });
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     return c.json({ success: false, error: 'Failed to verify Google Sign-In: ' + error.message }, 500);
@@ -144,7 +145,7 @@ authRouter.post('/register', authRateLimiter, async (c) => {
       const stmt = db.prepare('INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)');
       const info = await stmt.run(email, name, passwordHash);
 
-      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English' } }, 201);
+      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English', token: await signToken(Number(info.lastInsertRowid)) } }, 201);
     } catch (dbErr: any) {
       if (dbErr.message.includes('UNIQUE constraint failed')) {
         return c.json({ success: false, error: 'Email already registered' }, 400);
@@ -187,20 +188,20 @@ authRouter.post('/login', authRateLimiter, async (c) => {
       return c.json({ success: false, error: 'Invalid email or password' }, 401);
     }
 
-    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language } });
+    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language, token: await signToken(user.id) } });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }
 });
 
 const updateProfileSchema = z.object({
-  userId: z.number(),
   name: z.string().min(1),
   password: z.string().min(6).optional(),
   target_language: z.string().optional(),
 });
 
-authRouter.post('/update-profile', authRateLimiter, async (c) => {
+// Identitas dari session token — userId client diabaikan (menutup IDOR account takeover)
+authRouter.post('/update-profile', authRateLimiter, requireAuth, async (c) => {
   try {
     const body = await c.req.json();
     const result = updateProfileSchema.safeParse(body);
@@ -209,7 +210,8 @@ authRouter.post('/update-profile', authRateLimiter, async (c) => {
       return c.json({ success: false, error: 'Invalid update payload' }, 400);
     }
 
-    const { userId, name, password, target_language } = result.data;
+    const userId = c.get('authUserId');
+    const { name, password, target_language } = result.data;
 
     if (password) {
       const passwordHash = await hashPassword(password);

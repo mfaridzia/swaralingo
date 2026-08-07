@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { API_URL } from '../config';
+import { apiFetch } from '../api';
 
 interface JournalEntry {
   id: number;
@@ -54,7 +54,7 @@ export const JournalCoach: React.FC = () => {
   // Fetch journal entries history
   const { data: entriesData, isLoading: loadingEntries } = useQuery<{ success: boolean; data: JournalEntry[] }>({
     queryKey: ['journals', userId],
-    queryFn: () => fetch(`${API_URL}/journals?userId=${userId}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/journals?userId=${userId}`).then(res => res.json()),
     enabled: !!userId,
   });
 
@@ -67,7 +67,7 @@ export const JournalCoach: React.FC = () => {
       const user = savedUser ? JSON.parse(savedUser) : null;
       const targetLanguage = user?.target_language || 'English';
 
-      const res = await fetch(`${API_URL}/journals/prompt?targetLanguage=${encodeURIComponent(targetLanguage)}`);
+      const res = await apiFetch(`/journals/prompt?targetLanguage=${encodeURIComponent(targetLanguage)}`);
       const data = await res.json();
       if (data.success && data.prompt) {
         setCurrentPrompt(data.prompt);
@@ -81,7 +81,7 @@ export const JournalCoach: React.FC = () => {
 
   const submitJournalMutation = useMutation({
     mutationFn: (newEntry: { userId: number; prompt: string | null; content: string; targetLanguage: string }) => {
-      return fetch(`${API_URL}/journals`, {
+      return apiFetch('/journals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newEntry),

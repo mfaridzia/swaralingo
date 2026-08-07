@@ -1,15 +1,16 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import db from '../database.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const logsRouter = new Hono();
 
+// Identitas dari session token — userId client diabaikan (menutup IDOR)
+logsRouter.use('*', requireAuth);
+
 logsRouter.get('/', async (c) => {
   try {
-    const userId = c.req.query('userId');
-    if (!userId) {
-      return c.json({ success: false, error: 'Unauthorized: Missing userId parameter' }, 400);
-    }
+    const userId = c.get('authUserId');
     // audio_base64 hanya dikembalikan untuk log legacy (audio_key masih null) — data baru via R2
     const logs = await db.query(
       `SELECT id, user_id, user_input, ai_feedback, improved_version, created_at, audio_key,
@@ -26,7 +27,6 @@ const practiceLogSchema = z.object({
   userInput: z.string().min(1),
   aiFeedback: z.string().min(1),
   improvedVersion: z.string().min(1),
-  userId: z.number(),
   audioKey: z.string().nullable().optional(),
   audioBase64: z.string().nullable().optional() // diterima dari client lama; tidak di-echo kembali
 });
@@ -40,7 +40,8 @@ logsRouter.post('/', async (c) => {
       return c.json({ success: false, error: 'Invalid input data' }, 400);
     }
 
-    const { userInput, aiFeedback, improvedVersion, userId, audioKey = null, audioBase64 = null } = result.data;
+    const userId = c.get('authUserId');
+    const { userInput, aiFeedback, improvedVersion, audioKey = null, audioBase64 = null } = result.data;
     const stmt = db.prepare(
       'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_key, audio_base64) VALUES (?, ?, ?, ?, ?, ?)'
     );

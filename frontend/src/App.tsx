@@ -17,7 +17,7 @@ import { InterviewSimulator } from './components/InterviewSimulator';
 import { JournalCoach } from './components/JournalCoach';
 import type { UserProfile } from './components/Auth';
 
-import { API_URL } from './config';
+import { apiFetch, getToken, clearAuth } from './api';
 
 interface PracticeLog {
   id: number;
@@ -132,19 +132,19 @@ function MainAppLayout({
   // Queries
   const { data: logs, isLoading: loadingLogs } = useQuery<{ success: boolean; data: PracticeLog[] }>({
     queryKey: ['logs', activeUser.id],
-    queryFn: () => fetch(`${API_URL}/logs?userId=${activeUser.id}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/logs?userId=${activeUser.id}`).then(res => res.json()),
     enabled: !!activeUser,
   });
 
   const { data: chunks, isLoading: loadingChunks } = useQuery<{ success: boolean; data: SentenceChunk[] }>({
     queryKey: ['chunks', activeUser.id],
-    queryFn: () => fetch(`${API_URL}/chunks?userId=${activeUser.id}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/chunks?userId=${activeUser.id}`).then(res => res.json()),
     enabled: !!activeUser,
   });
 
   const { data: stats, isLoading: loadingStats } = useQuery<{ success: boolean; data: StatsData }>({
     queryKey: ['stats', activeUser.id],
-    queryFn: () => fetch(`${API_URL}/stats?userId=${activeUser.id}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/stats?userId=${activeUser.id}`).then(res => res.json()),
     enabled: !!activeUser,
   });
 
@@ -152,10 +152,10 @@ function MainAppLayout({
   // Catatan: body POST harus camelCase — backend Zod (logs.ts) memvalidasi userInput/aiFeedback/improvedVersion/audioKey
   const saveLogMutation = useMutation({
     mutationFn: (newLog: { userInput: string; aiFeedback: string; improvedVersion: string; audioKey?: string | null }) =>
-      fetch(`${API_URL}/logs`, {
+      apiFetch('/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newLog, userId: activeUser.id }),
+        body: JSON.stringify(newLog),
       }).then(async res => {
         const json = await res.json();
         if (!res.ok || !json.success) throw new Error(json.error || 'Failed to save log');
@@ -183,10 +183,10 @@ function MainAppLayout({
 
   const saveChunkMutation = useMutation({
     mutationFn: (newChunk: Omit<SentenceChunk, 'id'>) =>
-      fetch(`${API_URL}/chunks`, {
+      apiFetch('/chunks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newChunk, userId: activeUser.id }),
+        body: JSON.stringify(newChunk),
       }).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chunks', activeUser.id] });
@@ -202,12 +202,11 @@ function MainAppLayout({
     setIsGenerating(true);
 
     try {
-      const response = await fetch(`${API_URL}/analyze`, {
+      const response = await apiFetch('/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          sentence: userInput, 
-          userId: activeUser.id,
+        body: JSON.stringify({
+          sentence: userInput,
           targetLanguage: activeUser.target_language || 'English'
         }),
       });
@@ -235,7 +234,7 @@ function MainAppLayout({
     let audioKey: string | null = null;
     if (audioBlob) {
       try {
-        const res = await fetch(`${API_URL}/audio?userId=${activeUser.id}`, { method: 'POST', body: audioBlob });
+        const res = await apiFetch('/audio', { method: 'POST', body: audioBlob });
         const json = await res.json();
         if (json.success) audioKey = json.data.audioKey;
       } catch {
@@ -247,7 +246,7 @@ function MainAppLayout({
       {
         onError: () => {
           // Bersihkan orphan object R2 jika save log gagal
-          if (audioKey) fetch(`${API_URL}/audio/${audioKey}?userId=${activeUser.id}`, { method: 'DELETE' }).catch(() => {});
+          if (audioKey) apiFetch(`/audio/${audioKey}`, { method: 'DELETE' }).catch(() => {});
         },
       }
     );
@@ -430,15 +429,17 @@ export default function App() {
   const [activeUser, setActiveUser] = useState<UserProfile | null>(null);
   const [initializing, setInitializing] = useState(true);
 
-  // Load session from localStorage on startup
+  // Load session from localStorage on startup — wajib ada token JWT; tanpa token, sesi legacy dibersihkan (force re-login)
   useEffect(() => {
     const savedUser = localStorage.getItem('fluency_user');
-    if (savedUser) {
+    if (savedUser && getToken()) {
       try {
         setActiveUser(JSON.parse(savedUser));
       } catch (e) {
-        localStorage.removeItem('fluency_user');
+        clearAuth();
       }
+    } else {
+      clearAuth();
     }
     setInitializing(false);
   }, []);
@@ -450,7 +451,7 @@ export default function App() {
 
   const handleLogout = () => {
     setActiveUser(null);
-    localStorage.removeItem('fluency_user');
+    clearAuth();
   };
 
   if (initializing) {

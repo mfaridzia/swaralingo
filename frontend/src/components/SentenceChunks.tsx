@@ -11,7 +11,7 @@ import {
   BrainCircuit,
   Award
 } from 'lucide-react';
-import { API_URL } from '../config';
+import { apiFetch } from '../api';
 interface SentenceChunksProps {
   newPhrase: string;
   setNewPhrase: (val: string) => void;
@@ -56,7 +56,7 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
   const fetchChunksForReview = () => {
     if (!userId) return;
     setLoadingChunks(true);
-    fetch(`${API_URL}/chunks?userId=${userId}`)
+    apiFetch(`/chunks?userId=${userId}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -81,15 +81,14 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
     e.preventDefault();
     if (!newPhrase || !newMeaning || !newExample) return;
 
-    fetch(`${API_URL}/chunks`, {
+    apiFetch('/chunks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         phrase: newPhrase,
         meaning: newMeaning,
         example: newExample,
-        category: category,
-        userId: userId
+        category: category
       }),
     })
     .then(res => res.json())

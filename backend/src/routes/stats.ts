@@ -1,15 +1,16 @@
 import { Hono } from 'hono';
 import db from '../database.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const statsRouter = new Hono();
 
+// Identitas dari session token — userId client diabaikan (menutup IDOR)
+statsRouter.use('*', requireAuth);
+
 statsRouter.get('/', async (c) => {
   try {
-    const userId = c.req.query('userId');
+    const userId = c.get('authUserId');
     const range = c.req.query('range') || '7d';
-    if (!userId) {
-      return c.json({ success: false, error: 'Unauthorized: Missing userId parameter' }, 400);
-    }
 
     const logs = await db.query('SELECT * FROM practice_logs WHERE user_id = ? ORDER BY created_at ASC').all(userId) as any[];
     

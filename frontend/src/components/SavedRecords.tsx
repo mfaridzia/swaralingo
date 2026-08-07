@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookMarked, Download, Search, FileText, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { API_URL } from '../config';
+import { apiFetch } from '../api';
 
 interface PracticeLog {
   id: number;
@@ -41,15 +41,27 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [transcribingLogId, setTranscribingLogId] = useState<number | null>(null);
   const [transcriptions, setTranscriptions] = useState<{ [logId: number]: string }>({});
+  const [audioUrls, setAudioUrls] = useState<{ [logId: number]: string }>({});
 
-  // URL audio baru via proxy backend (R2 / storage lokal); fallback base64 untuk log legacy
-  const audioUrl = (log: PracticeLog): string =>
-    log.audio_key ? `${API_URL}/audio/${log.audio_key}?userId=${userId}` : log.audio_base64 || '';
+  // <audio> browser tak bisa kirim Authorization header → fetch via apiFetch → blob URL.
+  // Legacy base64 langsung dipakai sebagai src.
+  const loadAudioUrl = async (log: PracticeLog) => {
+    if (!log.audio_key || audioUrls[log.id]) return;
+    try {
+      const res = await apiFetch(`/audio/${log.audio_key}`);
+      const blob = await res.blob();
+      setAudioUrls(prev => ({ ...prev, [log.id]: URL.createObjectURL(blob) }));
+    } catch { /* audio tidak tersedia — biarkan kosong */ }
+  };
+
+  useEffect(() => {
+    (logs?.data || []).forEach(log => { if (log.audio_key) loadAudioUrl(log); });
+  }, [logs]);
 
   const downloadAudio = async (log: PracticeLog) => {
     const fileName = `speaking-log-${log.id}.webm`;
     if (log.audio_key) {
-      const res = await fetch(`${API_URL}/audio/${log.audio_key}?download=1&userId=${userId}`);
+      const res = await apiFetch(`/audio/${log.audio_key}?download=1`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -69,7 +81,7 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
     if (!log.audio_key && !log.audio_base64) return;
     setTranscribingLogId(log.id);
     try {
-      const res = await fetch(`${API_URL}/transcribe`, {
+      const res = await apiFetch('/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -307,7 +319,7 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
                   <div className="space-y-2 border-t border-[#27272a]/60 pt-3 mt-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <audio
-                        src={audioUrl(log)}
+                        src={log.audio_key ? audioUrls[log.id] || '' : log.audio_base64 || ''}
                         controls
                         className="h-7 w-full max-w-[170px] rounded-lg bg-[#121214] opacity-80 hover:opacity-100 transition-opacity"
                       />

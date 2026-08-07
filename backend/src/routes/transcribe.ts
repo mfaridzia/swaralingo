@@ -3,9 +3,13 @@ import { z } from 'zod';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getContext } from 'hono/context-storage';
 import { getEnvVar } from '../config.js';
-import { getAudioStorage } from '../audioStorage.js';
+import { getAudioStorage, keyUserId } from '../audioStorage.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const transcribeRouter = new Hono();
+
+// Wajib login — cegah transkripsi audio user lain via audioKey arbitrer
+transcribeRouter.use('*', requireAuth);
 
 const WHISPER_MODEL = '@cf/openai/whisper-large-v3-turbo';
 
@@ -82,6 +86,10 @@ export const transcribeHandler = async (c: any) => {
     let mimeType = 'audio/webm';
 
     if (audioKey) {
+      // Ownership: key audio hanya boleh diakses pemiliknya (session token)
+      if (keyUserId(audioKey) !== String(c.get('authUserId'))) {
+        return c.json({ success: false, error: 'Forbidden' }, 403);
+      }
       const audio = await getAudioStorage().get(audioKey);
       if (!audio) {
         return c.json({ success: false, error: 'Audio not found' }, 404);

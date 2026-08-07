@@ -3,8 +3,12 @@ import { z } from 'zod';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import db from '../database.js';
 import { getEnvVar } from '../config.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const journalsRouter = new Hono();
+
+// Identitas dari session token — userId client diabaikan (menutup IDOR)
+journalsRouter.use('*', requireAuth);
 
 const getAiClient = () => {
   const apiKey = getEnvVar('GEMINI_API_KEY');
@@ -13,7 +17,6 @@ const getAiClient = () => {
 
 // Schema validation for submitting a journal entry
 const journalSubmitSchema = z.object({
-  userId: z.number(),
   prompt: z.string().optional().nullable(),
   targetLanguage: z.string().optional(),
   content: z.string().min(5)
@@ -22,10 +25,7 @@ const journalSubmitSchema = z.object({
 // GET: Fetch all journal entries for a user
 journalsRouter.get('/', async (c) => {
   try {
-    const userId = c.req.query('userId');
-    if (!userId) {
-      return c.json({ success: false, error: 'Unauthorized: Missing userId parameter' }, 400);
-    }
+    const userId = c.get('authUserId');
     const entries = await db.query('SELECT * FROM journals WHERE user_id = ? ORDER BY created_at DESC').all(userId);
     return c.json({ success: true, data: entries });
   } catch (error: any) {
@@ -79,7 +79,8 @@ journalsRouter.post('/', async (c) => {
       return c.json({ success: false, error: 'Content must be at least 5 characters.' }, 400);
     }
 
-    const { userId, prompt = null, content, targetLanguage = 'English' } = result.data;
+    const userId = c.get('authUserId');
+    const { prompt = null, content, targetLanguage = 'English' } = result.data;
     
     let detectedMood = 'Neutral';
     let aiReflection = 'Thank you for sharing your thoughts today. Keep practicing and journaling!';

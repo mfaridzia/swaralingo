@@ -2,9 +2,13 @@ import { Hono } from 'hono';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import db from '../database.js';
 import { analyzeRateLimiter } from '../middleware/rateLimiter.js';
+import { requireAuth } from '../middleware/auth.js';
 import { getEnvVar } from '../config.js';
 
 const analyzeRouter = new Hono();
+
+// Wajib login — cegah pembakaran kuota Gemini oleh anonymous
+analyzeRouter.use('*', requireAuth);
 
 const getAiClient = () => {
   const apiKey = getEnvVar('GEMINI_API_KEY');

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Award, MessageSquare, TrendingUp, Calendar, Zap, PieChart, Target, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { API_URL } from '../config';
+import { apiFetch } from '../api';
 
 interface ChartDataItem {
   date: string;
@@ -76,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Query specific range stats data
   const { data: stats, isLoading } = useQuery<{ success: boolean; data: StatsData }>({
     queryKey: ['stats', userId, range],
-    queryFn: () => fetch(`${API_URL}/stats?userId=${userId}&range=${range}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/stats?userId=${userId}&range=${range}`).then(res => res.json()),
     enabled: !!userId,
     initialData: range === '7d' ? initialStats : undefined
   });
@@ -84,14 +84,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Query all sentence chunks to analyze category distribution
   const { data: chunksData } = useQuery<{ success: boolean; data: SentenceChunk[] }>({
     queryKey: ['chunks', userId],
-    queryFn: () => fetch(`${API_URL}/chunks?userId=${userId}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/chunks?userId=${userId}`).then(res => res.json()),
     enabled: !!userId,
   });
 
   // Query all practice logs to analyze previous mistakes
   const { data: logsData } = useQuery<{ success: boolean; data: PracticeLog[] }>({
     queryKey: ['logs', userId],
-    queryFn: () => fetch(`${API_URL}/logs?userId=${userId}`).then(res => res.json()),
+    queryFn: () => apiFetch(`/logs?userId=${userId}`).then(res => res.json()),
     enabled: !!userId,
   });
 
@@ -114,12 +114,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         .map(l => `- Original: "${l.user_input}"\n  Correction: "${l.improved_version}"\n  Feedback: "${l.ai_feedback}"`)
         .join('\n');
 
-      const response = await fetch(`${API_URL}/analyze`, {
+      const response = await apiFetch('/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sentence: `[GENERATE_CHALLENGE_REQUEST] Here is my recent practice history where I made mistakes:\n${mistakesContext || "No mistakes recorded yet. I am a starter practitioner."}\n\nAnalyze my weaknesses and generate a personalized daily challenge prompt. Ask me to write a sentence describing a specific corporate scenario, standard IT standup event, or daily task where I must practice using correct structures. Keep the prompt brief, friendly, under 3 sentences, and challenging.`,
-          userId: userId,
           targetLanguage: savedUser ? JSON.parse(savedUser).target_language || 'English' : 'English'
         })
       });

@@ -1,15 +1,16 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import db from '../database.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const chunksRouter = new Hono();
 
+// Identitas dari session token — userId client diabaikan (menutup IDOR)
+chunksRouter.use('*', requireAuth);
+
 chunksRouter.get('/', async (c) => {
   try {
-    const userId = c.req.query('userId');
-    if (!userId) {
-      return c.json({ success: false, error: 'Unauthorized: Missing userId parameter' }, 400);
-    }
+    const userId = c.get('authUserId');
     const chunks = await db.query('SELECT * FROM sentence_chunks WHERE user_id = ? ORDER BY created_at DESC').all(userId);
     return c.json({ success: true, data: chunks });
   } catch (error: any) {
@@ -21,8 +22,7 @@ const chunkSchema = z.object({
   phrase: z.string().min(1),
   meaning: z.string().min(1),
   example: z.string().min(1),
-  category: z.string().optional(),
-  userId: z.number()
+  category: z.string().optional()
 });
 
 chunksRouter.post('/', async (c) => {
@@ -34,7 +34,8 @@ chunksRouter.post('/', async (c) => {
       return c.json({ success: false, error: 'Invalid input data' }, 400);
     }
 
-    const { phrase, meaning, example, category = 'General', userId } = result.data;
+    const userId = c.get('authUserId');
+    const { phrase, meaning, example, category = 'General' } = result.data;
     const stmt = db.prepare(
       'INSERT INTO sentence_chunks (user_id, phrase, meaning, example, category) VALUES (?, ?, ?, ?, ?)'
     );
