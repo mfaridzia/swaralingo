@@ -9,6 +9,8 @@ import statsRouter from './routes/stats.js';
 import analyzeRouter from './routes/analyze.js';
 import seedRouter from './routes/seed.js';
 import journalsRouter from './routes/journals.js';
+import audioRouter from './routes/audio.js';
+import transcribeRouter from './routes/transcribe.js';
 
 import { initDB } from './database.js';
 
@@ -47,6 +49,8 @@ app.route('/api/stats', statsRouter);
 app.route('/api/analyze', analyzeRouter);
 app.route('/api/seed', seedRouter);
 app.route('/api/journals', journalsRouter);
+app.route('/api/audio', audioRouter);
+app.route('/api/transcribe', transcribeRouter);
 
 export default {
   port: PORT,

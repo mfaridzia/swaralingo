@@ -9,6 +9,7 @@ interface PracticeLog {
   ai_feedback: string;
   improved_version: string;
   audio_base64?: string | null;
+  audio_key?: string | null;
   created_at: string;
 }
 
@@ -26,6 +27,7 @@ interface SavedRecordsProps {
   loadingLogs: boolean;
   chunks: { success: boolean; data: SentenceChunk[] } | undefined;
   loadingChunks: boolean;
+  userId: number;
 }
 
 export const SavedRecords: React.FC<SavedRecordsProps> = ({
@@ -34,28 +36,45 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
   loadingLogs,
   chunks,
   loadingChunks,
+  userId,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [transcribingLogId, setTranscribingLogId] = useState<number | null>(null);
   const [transcriptions, setTranscriptions] = useState<{ [logId: number]: string }>({});
 
-  const downloadAudio = (base64Data: string, fileName: string) => {
-    if (!base64Data) return;
-    const a = document.createElement('a');
-    a.href = base64Data;
-    a.download = fileName;
-    a.click();
+  // URL audio baru via proxy backend (R2 / storage lokal); fallback base64 untuk log legacy
+  const audioUrl = (log: PracticeLog): string =>
+    log.audio_key ? `${API_URL}/audio/${log.audio_key}?userId=${userId}` : log.audio_base64 || '';
+
+  const downloadAudio = async (log: PracticeLog) => {
+    const fileName = `speaking-log-${log.id}.webm`;
+    if (log.audio_key) {
+      const res = await fetch(`${API_URL}/audio/${log.audio_key}?download=1&userId=${userId}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (log.audio_base64) {
+      const a = document.createElement('a');
+      a.href = log.audio_base64;
+      a.download = fileName;
+      a.click();
+    }
   };
 
-  const handleTranscribe = async (logId: number, audioBase64: string) => {
-    if (!audioBase64) return;
-    setTranscribingLogId(logId);
+  const handleTranscribe = async (log: PracticeLog) => {
+    if (!log.audio_key && !log.audio_base64) return;
+    setTranscribingLogId(log.id);
     try {
       const res = await fetch(`${API_URL}/transcribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          audioBase64,
+        body: JSON.stringify({
+          audioKey: log.audio_key || undefined,
+          audioBase64: log.audio_base64 || undefined,
           targetLanguage: localStorage.getItem('fluency_user') ? JSON.parse(localStorage.getItem('fluency_user')!).target_language || 'English' : 'English'
         }),
       });
@@ -63,7 +82,7 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
       if (res.ok && resData.success) {
         setTranscriptions(prev => ({
           ...prev,
-          [logId]: resData.transcription
+          [log.id]: resData.transcription
         }));
       } else {
         alert(resData.error || "Failed to transcribe audio.");
@@ -284,17 +303,17 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
                   <p className="text-xs font-medium text-[#4ade80] break-all">"{log.improved_version}"</p>
                 </div>
 
-                {log.audio_base64 && (
+                {(log.audio_key || log.audio_base64) && (
                   <div className="space-y-2 border-t border-[#27272a]/60 pt-3 mt-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <audio 
-                        src={log.audio_base64} 
-                        controls 
-                        className="h-7 w-full max-w-[170px] rounded-lg bg-[#121214] opacity-80 hover:opacity-100 transition-opacity" 
+                      <audio
+                        src={audioUrl(log)}
+                        controls
+                        className="h-7 w-full max-w-[170px] rounded-lg bg-[#121214] opacity-80 hover:opacity-100 transition-opacity"
                       />
                       <div className="flex gap-1.5">
                         <button
-                          onClick={() => handleTranscribe(log.id, log.audio_base64!)}
+                          onClick={() => handleTranscribe(log)}
                           disabled={transcribingLogId === log.id}
                           title="Transcribe Audio Recording"
                           className="p-2 rounded-lg border border-[#27272a] hover:border-white text-[#a1a1aa] hover:text-[#22c55e] transition-colors cursor-pointer bg-[#121214]/40 disabled:opacity-50 disabled:pointer-events-none"
@@ -306,7 +325,7 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
                           )}
                         </button>
                         <button
-                          onClick={() => downloadAudio(log.audio_base64!, `speaking-log-${log.id}.webm`)}
+                          onClick={() => downloadAudio(log)}
                           title="Download Recorded Voice"
                           className="p-2 rounded-lg border border-[#27272a] hover:border-white text-[#a1a1aa] hover:text-white transition-colors cursor-pointer bg-[#121214]/40"
                         >

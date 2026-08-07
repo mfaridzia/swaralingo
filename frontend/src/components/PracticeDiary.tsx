@@ -20,7 +20,7 @@ interface PracticeDiaryProps {
   aiFeedback: string;
   isGenerating: boolean;
   handleQuickImprove: () => void;
-  handleSaveLog: (audioBase64?: string | null) => void;
+  handleSaveLog: (audioBlob?: Blob | null) => void;
 }
 
 const languageLocales: Record<string, string> = {
@@ -49,9 +49,9 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   
-  // Audio recording references and state
+  // Audio recording references and state (Blob dikirim langsung, tanpa konversi base64)
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-  const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
   // Text-to-speech voice customization states
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -198,7 +198,7 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
       recognition.stop();
       stopAudioRecording();
     } else {
-      setAudioBase64(null);
+      setAudioBlob(null);
       recognition.start();
 
       // Start capturing actual audio from microphone in parallel
@@ -215,12 +215,7 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
 
           recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'audio/webm' });
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-              const base64data = reader.result as string;
-              setAudioBase64(base64data);
-            };
+            setAudioBlob(blob);
           };
 
           recorder.start();
@@ -542,8 +537,8 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
           <div className="flex justify-end">
             <button
               onClick={() => {
-                handleSaveLog(audioBase64);
-                setAudioBase64(null);
+                handleSaveLog(audioBlob);
+                setAudioBlob(null);
               }}
               className="premium-btn-hover flex items-center gap-2 rounded-xl bg-[#27272a] px-5 py-2.5 text-sm font-semibold text-white border-none cursor-pointer"
             >

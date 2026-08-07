@@ -154,6 +154,13 @@ export async function initDB() {
     // Diabaikan jika kolom audio_base64 sudah ada
   }
 
+  // Tambahkan kolom audio_key (referensi object Cloudflare R2 / file lokal) jika belum ada
+  try {
+    await db.run(`ALTER TABLE practice_logs ADD COLUMN audio_key TEXT`);
+  } catch (e) {
+    // Diabaikan jika kolom audio_key sudah ada
+  }
+
   // Tambahkan kolom mistake_category jika belum ada
   try {
     await db.run(`ALTER TABLE practice_logs ADD COLUMN mistake_category TEXT DEFAULT 'None'`);

@@ -10,7 +10,12 @@ logsRouter.get('/', async (c) => {
     if (!userId) {
       return c.json({ success: false, error: 'Unauthorized: Missing userId parameter' }, 400);
     }
-    const logs = await db.query('SELECT * FROM practice_logs WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+    // audio_base64 hanya dikembalikan untuk log legacy (audio_key masih null) — data baru via R2
+    const logs = await db.query(
+      `SELECT id, user_id, user_input, ai_feedback, improved_version, created_at, audio_key,
+              CASE WHEN audio_key IS NULL THEN audio_base64 END AS audio_base64
+       FROM practice_logs WHERE user_id = ? ORDER BY created_at DESC`
+    ).all(userId);
     return c.json({ success: true, data: logs });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
@@ -22,7 +27,8 @@ const practiceLogSchema = z.object({
   aiFeedback: z.string().min(1),
   improvedVersion: z.string().min(1),
   userId: z.number(),
-  audioBase64: z.string().optional().nullable()
+  audioKey: z.string().nullable().optional(),
+  audioBase64: z.string().nullable().optional() // diterima dari client lama; tidak di-echo kembali
 });
 
 logsRouter.post('/', async (c) => {
@@ -34,15 +40,15 @@ logsRouter.post('/', async (c) => {
       return c.json({ success: false, error: 'Invalid input data' }, 400);
     }
 
-    const { userInput, aiFeedback, improvedVersion, userId, audioBase64 = null } = result.data;
+    const { userInput, aiFeedback, improvedVersion, userId, audioKey = null, audioBase64 = null } = result.data;
     const stmt = db.prepare(
-      'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_base64) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_key, audio_base64) VALUES (?, ?, ?, ?, ?, ?)'
     );
-    const info = await stmt.run(userId, userInput, aiFeedback, improvedVersion, audioBase64);
+    const info = await stmt.run(userId, userInput, aiFeedback, improvedVersion, audioKey, audioBase64);
 
     return c.json({
       success: true,
-      data: { id: info.lastInsertRowid, userId, userInput, aiFeedback, improvedVersion, audioBase64 },
+      data: { id: info.lastInsertRowid, userId, userInput, aiFeedback, improvedVersion, audioKey },
     });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);

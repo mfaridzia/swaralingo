@@ -14,6 +14,9 @@ build/
 scratch/
 .ai/scratch/
 
+# Local Audio Storage (Dev Fallback untuk Cloudflare R2)
+backend/audio/
+
 # Logs & OS Junk
 *.log
 npm-debug.log*

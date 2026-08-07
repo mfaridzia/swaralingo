@@ -51,6 +51,8 @@
 - **ADR-037**: Mengimplementasikan modul AI Journaling & Reflection Coach (skema tabel SQLite, endpoint analisis mood/sentiment otomatis via Gemini, dan antarmuka jurnaling multi-paragraf interaktif).
 - **ADR-038**: Menghapus rute redirect sirkular `/dashboard` dan `key={location.pathname}` pada tag Routes di App.tsx untuk mengeliminasi bug blank screen saat transi-halaman di React Router v6.
 - **ADR-039**: Mengimplementasikan wrapper database asinkron dinamis pada database.ts berbasis `NODE_ENV`. Menggunakan `bun:sqlite` untuk pengembangan lokal yang cepat/offline, dan `@libsql/client` (Turso) di lingkungan produksi untuk mempermudah migrasi serverless (Cloudflare Workers).
+- **ADR-040**: Memindahkan penyimpanan audio rekaman dari Base64-in-SQLite ke Cloudflare R2 (object key `audio/{userId}/{uuid}.webm`). Menambahkan abstraksi `audioStorage.ts` (R2 untuk produksi, filesystem `backend/audio/` untuk dev lokal), endpoint baru `POST/GET/DELETE /api/audio`, kolom `audio_key` di `practice_logs` (kolom `audio_base64` dipertahankan untuk log legacy — GET /logs mengembalikan base64 hanya via CASE WHEN audio_key IS NULL), dan perbaikan route mismatch transcribe (kini ter-wire di `/api/transcribe` + alias `/api/analyze/transcribe`).
+- **ADR-041**: Frontend menyimpan rekaman sebagai Blob (tanpa konversi base64) dan meng-upload binary mentah ke `POST /api/audio` sebelum menyimpan log (upload-then-save, dengan pembersihan orphan best-effort jika save gagal).
 
 ## 🎨 Design System & UI Updates
 

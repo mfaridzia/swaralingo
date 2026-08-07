@@ -24,3 +24,8 @@ NODE_ENV = "production"
 # TURSO_DATABASE_URL = "libsql://your-db-name-user.turso.io"
 # TURSO_AUTH_TOKEN = "your-turso-auth-token"
 # GEMINI_API_KEY = "your-gemini-api-key"
+
+# Bucket R2 untuk penyimpanan audio rekaman (buat sekali: wrangler r2 bucket create swaralingo-audio)
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "swaralingo-audio"

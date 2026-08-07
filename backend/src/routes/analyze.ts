@@ -88,38 +88,9 @@ analyzeRouter.post('/', analyzeRateLimiter, async (c) => {
   }
 });
 
-analyzeRouter.post('/transcribe', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { audioBase64, targetLanguage = 'English' } = body;
-    if (!audioBase64) {
-      return c.json({ success: false, error: 'Audio data is required' }, 400);
-    }
+import { transcribeHandler } from './transcribe.js';
 
-    const commaIndex = audioBase64.indexOf(',');
-    const base64Data = commaIndex > -1 ? audioBase64.substring(commaIndex + 1) : audioBase64;
-    
-    let mimeType = 'audio/webm';
-    if (audioBase64.startsWith('data:')) {
-      const colonIndex = audioBase64.indexOf(':');
-      const semicolonIndex = audioBase64.indexOf(';');
-      if (colonIndex > -1 && semicolonIndex > -1) {
-        mimeType = audioBase64.substring(colonIndex + 1, semicolonIndex);
-      }
-    }
-
-    const model = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash' });
-    const result = await model.generateContent([
-      { inlineData: { data: base64Data, mimeType: mimeType } },
-      { text: `Transcribe this audio file exactly as spoken in ${targetLanguage}. Write only the transcription. If there are filler words, transcribe them. Do not write any other explanation or pleasantries. If there is no voice, write [No Voice Detected].` }
-    ]);
-
-    const transcription = result.response.text().trim();
-    return c.json({ success: true, transcription });
-  } catch (error: any) {
-    const isQuotaExceeded = error.message?.includes('Quota exceeded') || error.status === 429;
-    return c.json({ success: false, error: isQuotaExceeded ? 'Gemini API quota exceeded. Please try again later.' : 'Failed to transcribe: ' + error.message }, 500);
-  }
-});
+// Alias agar URL lama /api/analyze/transcribe tetap berfungsi (handler utama di /api/transcribe)
+analyzeRouter.post('/transcribe', transcribeHandler);
 
 export default analyzeRouter;

@@ -25,7 +25,7 @@ interface PracticeLog {
   ai_feedback: string;
   improved_version: string;
   audio_base64?: string | null;
-  audioBase64?: string | null;
+  audio_key?: string | null;
   created_at: string;
 }
 
@@ -221,14 +221,28 @@ function MainAppLayout({
     }
   };
 
-  const handleSaveLog = (audioBase64?: string | null) => {
+  const handleSaveLog = async (audioBlob?: Blob | null) => {
     if (!userInput || !improvedVersion || !aiFeedback) return;
-    saveLogMutation.mutate({
-      user_input: userInput,
-      ai_feedback: aiFeedback,
-      improved_version: improvedVersion,
-      audio_base64: audioBase64 || null
-    });
+    // Upload audio ke R2 (atau storage lokal di dev) dulu, simpan referensi key di log
+    let audioKey: string | null = null;
+    if (audioBlob) {
+      try {
+        const res = await fetch(`${API_URL}/audio?userId=${activeUser.id}`, { method: 'POST', body: audioBlob });
+        const json = await res.json();
+        if (json.success) audioKey = json.data.audioKey;
+      } catch {
+        // Best-effort: simpan log tanpa audio jika upload gagal
+      }
+    }
+    saveLogMutation.mutate(
+      { user_input: userInput, ai_feedback: aiFeedback, improved_version: improvedVersion, audio_key: audioKey },
+      {
+        onError: () => {
+          // Bersihkan orphan object R2 jika save log gagal
+          if (audioKey) fetch(`${API_URL}/audio/${audioKey}?userId=${activeUser.id}`, { method: 'DELETE' }).catch(() => {});
+        },
+      }
+    );
   };
 
   const handleSaveChunk = (e: React.FormEvent) => {
@@ -322,12 +336,13 @@ function MainAppLayout({
           </AnimatePresence>
         </div>
 
-        <SavedRecords 
+        <SavedRecords
           activeTab={activeTab}
           logs={logs}
           loadingLogs={loadingLogs}
           chunks={chunks}
           loadingChunks={loadingChunks}
+          userId={activeUser.id}
         />
       </main>
 
