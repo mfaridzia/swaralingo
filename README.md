@@ -2,35 +2,35 @@
 
 > **AI-Powered Active Speaking & Language Learning Practice Web App**
 
-SwaraLingo adalah platform web interaktif yang dirancang untuk membantu developer dan profesional teknologi melatih kemampuan berbicara (*active speaking*) bahasa asing secara mandiri, terarah, dan dianalisis langsung oleh AI secara real-time.
+SwaraLingo is an interactive web platform designed to help developers and tech professionals practice their active speaking skills in foreign languages. It provides real-time AI-driven analysis, feedback, and coaching.
 
 ---
 
 ## 📌 Core Features
 
 1. **Active Practice Diary (AI Coach):**
-   * Tulis atau rekam suaramu langsung melalui integrasi browser **Speech Recognition API**.
-   * Dapatkan umpan balik instan tata bahasa, kosa kata, dan versi kalimat yang lebih natural (*Polished Version*) dari **Gemini AI**.
-   * Dengar pelafalan natural menggunakan **Text-to-Speech (TTS)** dengan pilihan aksen/gender suara.
+   * Write or record your voice directly using the browser's built-in **Speech Recognition API**.
+   * Receive instant grammar, vocabulary, and sentence structure feedback from **Gemini AI**, along with a natural/polished version of your input.
+   * Listen to the natural version using **Text-to-Speech (TTS)** with accent and gender selection.
 
-2. **Saved Records & Audio Waveform:**
-   * Simpan riwayat latihan bersuaramu ke database (tersimpan dalam enkripsi base64).
-   * Putar kembali rekaman suara asli dan unduh sebagai file `.webm` lokal.
+2. **Saved Records & Audio Playback:**
+   * Save your practice history to the database (stored securely as base64-encoded audio).
+   * Play back your original voice recordings and download them as local `.webm` files.
 
 3. **Interactive Shadowing Mode:**
-   * Latih pelafalanmu dengan meniru suara kalimat aslinya. AI akan membandingkan kesamaan teks transkrip suaramu dengan versi natural.
+   * Improve your pronunciation by mimicking native sentences. The AI compares your transcription match rate with the natural version.
 
 4. **IT Interview Simulator:**
-   * Lakukan simulasi wawancara kerja teknis dengan AI Recruiter. AI akan memberikan pertanyaan interaktif, menilai kecocokan jawabanmu, memberikan feedback tata bahasa, dan skor kelayakan.
+   * Simulate real-world technical interviews with an AI Recruiter. The AI asks dynamic questions, rates your suitability, evaluates grammar, and scores your answers.
 
 5. **AI Journaling & Reflection Coach:**
-   * Tulis jurnal harian dalam target bahasa pilihanmu. AI akan menganalisis emosi/mood kamu secara otomatis (*Sentiment Analysis*) dan memberikan refleksi motivasional yang hangat.
+   * Write daily journals in your target language. The AI automatically detects your mood/emotional tone (*Sentiment Analysis*) and provides warm, motivating reflections.
 
 6. **Grammar Mistake Heatmap & Stats:**
-   * Lacak jenis-jenis kesalahan tata bahasa kamu (seperti preposisi, tenses, subjek-predikat) secara visual dengan grafik progress dan heatmap tren mingguan.
+   * Visually track your grammar errors (e.g., preposiions, tenses, subject-verb agreements) using progress charts and a 5-week history heatmap.
 
 7. **Spaced Repetition Flashcards:**
-   * Simpan kosa kata baru ke Chunks Bank dan pelajari kembali menggunakan metode kartu pengulangan berkala (*Spaced Repetition System*) berdasarkan tingkat kesulitan (Easy, Medium, Hard).
+   * Save new phrases to your Chunks Bank and review them using a **Spaced Repetition System (SRS)** with difficulty ratings (Easy, Medium, Hard).
 
 ---
 
@@ -48,24 +48,24 @@ SwaraLingo adalah platform web interaktif yang dirancang untuk membantu develope
 * **AI Engine:** Google Gemini AI SDK (`gemini-3.5-flash`)
 
 ### **Database (Multi-Env Setup)**
-* **Lokal Dev:** Serverless offline local SQLite database menggunakan native `bun:sqlite`.
-* **Produksi:** Cloud serverless SQLite menggunakan **Turso** (`@libsql/client`) melalui HTTP/WebSockets.
+* **Local Development:** Offline-first local SQLite database using native `bun:sqlite`.
+* **Production:** Serverless cloud SQLite database using **Turso** (`@libsql/client`) via HTTP/WebSockets.
 
 ---
 
-## 🚀 Quick Start (Menjalankan secara Lokal)
+## 🚀 Quick Start (Local Setup)
 
 ### Prerequisites
-Pastikan kamu sudah menginstal [Bun](https://bun.sh) di komputermu.
+Make sure you have [Bun](https://bun.sh) installed on your system.
 
-### 1. Clone Project
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/mfaridzia/swaralingo.git
 cd swaralingo
 ```
 
 ### 2. Setup Environment Variables
-Buat file `.env` di folder `/backend` dan isi:
+Create a `.env` file in the `/backend` folder:
 ```env
 PORT=3000
 GEMINI_API_KEY=your-gemini-api-key-here
@@ -73,35 +73,35 @@ GOOGLE_CLIENT_ID=your-google-client-id-here
 CORS_ORIGIN=http://localhost:5173
 ```
 
-### 3. Jalankan Aplikasi
-Jalankan perintah ini di root folder proyek:
-* **Jalankan Backend:**
+### 3. Run the Application
+Run these commands in your project root directory:
+* **Start the Backend:**
   ```bash
   cd backend
   bun install
   bun run dev
   ```
-* **Jalankan Frontend:**
+* **Start the Frontend:**
   ```bash
   cd frontend
   bun install
   bun run dev
   ```
-Buka **`http://localhost:5173`** di browsermu.
+Open **`http://localhost:5173`** in your browser.
 
 ---
 
-## ☁️ Deployment Architecture (Rp 0 Production Stack)
+## ☁️ Deployment Architecture (Zero-Cost Production Stack)
 
-Aplikasi ini dirancang modular agar dapat dideploy gratis ke serverless platform modern:
+This app is designed to run seamlessly on modern serverless platforms for free:
 
-* **Frontend:** Di-deploy ke **Vercel** / **Cloudflare Pages** (Menyajikan file statis React).
-* **Backend:** Di-deploy ke **Cloudflare Workers** (Menggunakan konfigurasi `wrangler.toml` yang tersedia di folder `/backend`).
-* **Database:** Di-host di **Turso** (SQLite cloud dengan persistent volume gratis).
+* **Frontend:** Hosted on **Vercel** or **Cloudflare Pages** (static React file deployment).
+* **Backend:** Hosted on **Cloudflare Workers** (configured using the `wrangler.toml` file in `/backend`).
+* **Database:** Hosted on **Turso** (Cloud SQLite database with a generous free tier).
 
-*Untuk beralih ke mode produksi, cukup isi variabel `TURSO_DATABASE_URL` dan `TURSO_AUTH_TOKEN` pada environment variables Cloudflare Workers.*
+*To switch to production mode, configure the `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` environment variables on Cloudflare Workers.*
 
 ---
 
 ## 📄 License
-[MIT License](LICENSE) - Bebas digunakan dan dimodifikasi!
+[MIT License](LICENSE) - Free to use and modify for personal and commercial projects!
