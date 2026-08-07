@@ -12,11 +12,15 @@ import journalsRouter from './routes/journals.js';
 
 import { initDB } from './database.js';
 
+import { contextStorage } from 'hono/context-storage';
+
 if (process.env.NODE_ENV !== 'production') {
   await initDB();
 }
 
 const app = new Hono();
+
+app.use('*', contextStorage());
 
 app.get('/api/init-db', async (c) => {
   try {

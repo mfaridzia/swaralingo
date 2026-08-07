@@ -1,4 +1,5 @@
 import { createClient } from "@libsql/client";
+import { getEnvVar } from "./config.js";
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -8,7 +9,8 @@ let tursoClient: any = null;
 const getTursoClient = () => {
   if (isProd) {
     if (!tursoClient) {
-      const url = process.env.TURSO_DATABASE_URL;
+      const url = getEnvVar("TURSO_DATABASE_URL");
+      const authToken = getEnvVar("TURSO_AUTH_TOKEN");
       if (!url) {
         // Return dummy client to prevent crash during Cloudflare's compile-time validation
         return {
@@ -19,7 +21,7 @@ const getTursoClient = () => {
       }
       tursoClient = createClient({
         url,
-        authToken: process.env.TURSO_AUTH_TOKEN || '',
+        authToken: authToken || '',
       });
     }
     return tursoClient;
