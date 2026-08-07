@@ -5,12 +5,29 @@ const isProd = process.env.NODE_ENV === 'production';
 let localDb: any = null;
 let tursoClient: any = null;
 
-if (isProd) {
-  tursoClient = createClient({
-    url: process.env.TURSO_DATABASE_URL || '',
-    authToken: process.env.TURSO_AUTH_TOKEN || '',
-  });
-} else {
+const getTursoClient = () => {
+  if (isProd) {
+    if (!tursoClient) {
+      const url = process.env.TURSO_DATABASE_URL;
+      if (!url) {
+        // Return dummy client to prevent crash during Cloudflare's compile-time validation
+        return {
+          execute: async () => {
+            throw new Error("Database configuration TURSO_DATABASE_URL is missing.");
+          }
+        };
+      }
+      tursoClient = createClient({
+        url,
+        authToken: process.env.TURSO_AUTH_TOKEN || '',
+      });
+    }
+    return tursoClient;
+  }
+  return null;
+};
+
+if (!isProd) {
   const bunSqliteLib = "bun:sqlite";
   const { Database } = await import(bunSqliteLib);
   localDb = new Database("sqlite.db", { create: true });
@@ -19,7 +36,7 @@ if (isProd) {
 export const db = {
   run: async (sql: string, ...params: any[]): Promise<any> => {
     if (isProd) {
-      return await tursoClient.execute({ sql, args: params });
+      return await getTursoClient().execute({ sql, args: params });
     } else {
       return localDb!.run(sql, ...params);
     }
@@ -29,7 +46,7 @@ export const db = {
     return {
       all: async (...params: any[]): Promise<any[]> => {
         if (isProd) {
-          const res = await tursoClient.execute({ sql, args: params });
+          const res = await getTursoClient().execute({ sql, args: params });
           return res.rows as any[];
         } else {
           return localDb!.query(sql).all(...params) as any[];
@@ -37,7 +54,7 @@ export const db = {
       },
       get: async (...params: any[]): Promise<any | undefined> => {
         if (isProd) {
-          const res = await tursoClient.execute({ sql, args: params });
+          const res = await getTursoClient().execute({ sql, args: params });
           return res.rows[0] as any;
         } else {
           return localDb!.query(sql).get(...params) as any;
@@ -50,7 +67,7 @@ export const db = {
     return {
       run: async (...params: any[]): Promise<{ lastInsertRowid: number | null, changes: number }> => {
         if (isProd) {
-          const res = await tursoClient.execute({ sql, args: params });
+          const res = await getTursoClient().execute({ sql, args: params });
           const rowId = typeof res.lastInsertRowid === 'bigint' 
             ? Number(res.lastInsertRowid) 
             : (res.lastInsertRowid as number | null);
@@ -71,7 +88,7 @@ export const db = {
       },
       get: async (...params: any[]): Promise<any | undefined> => {
         if (isProd) {
-          const res = await tursoClient.execute({ sql, args: params });
+          const res = await getTursoClient().execute({ sql, args: params });
           return res.rows[0] as any;
         } else {
           return localDb!.prepare(sql).get(...params) as any;
@@ -79,7 +96,7 @@ export const db = {
       },
       all: async (...params: any[]): Promise<any[]> => {
         if (isProd) {
-          const res = await tursoClient.execute({ sql, args: params });
+          const res = await getTursoClient().execute({ sql, args: params });
           return res.rows as any[];
         } else {
           return localDb!.prepare(sql).all(...params) as any[];
