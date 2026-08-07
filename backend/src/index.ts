@@ -31,10 +31,14 @@ app.get('/api/init-db', async (c) => {
   }
 });
 
-app.use('/*', cors({
-  origin: CORS_ORIGIN,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-}));
+app.use('/*', (c, next) => {
+  const origin = c.env?.CORS_ORIGIN || CORS_ORIGIN;
+  const corsMiddleware = cors({
+    origin,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  });
+  return corsMiddleware(c, next);
+});
 
 app.route('/api/auth', authRouter);
 app.route('/api/logs', logsRouter);
