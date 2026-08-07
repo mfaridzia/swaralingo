@@ -12,6 +12,64 @@ const getOAuthClient = () => {
   return new OAuth2Client(clientId);
 };
 
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey", "deriveBits"]
+  );
+  const key = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256
+  );
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(key)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+}
+
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  if (storedHash.startsWith('$2')) {
+    if (typeof Bun !== 'undefined') {
+      return await Bun.password.verify(password, storedHash);
+    }
+    throw new Error("Legacy bcrypt hash cannot be verified in this environment.");
+  }
+  const parts = storedHash.split(':');
+  if (parts.length !== 2) return false;
+  const [saltHex, hashHex] = parts;
+  const salt = new Uint8Array(saltHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey", "deriveBits"]
+  );
+  const key = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256
+  );
+  const currentHashHex = Array.from(new Uint8Array(key)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return currentHashHex === hashHex;
+}
+
 authRouter.post('/google', authRateLimiter, async (c) => {
   try {
     const { credential } = await c.req.json();
@@ -80,7 +138,7 @@ authRouter.post('/register', authRateLimiter, async (c) => {
     }
 
     const { email, name, password } = result.data;
-    const passwordHash = await Bun.password.hash(password);
+    const passwordHash = await hashPassword(password);
 
     try {
       const stmt = db.prepare('INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)');
@@ -124,7 +182,7 @@ authRouter.post('/login', authRateLimiter, async (c) => {
       return c.json({ success: false, error: 'This account uses Google Sign-In. Please sign in with Google.' }, 401);
     }
 
-    const isMatch = await Bun.password.verify(password, user.password_hash);
+    const isMatch = await verifyPassword(password, user.password_hash);
     if (!isMatch) {
       return c.json({ success: false, error: 'Invalid email or password' }, 401);
     }
@@ -154,7 +212,7 @@ authRouter.post('/update-profile', authRateLimiter, async (c) => {
     const { userId, name, password, target_language } = result.data;
 
     if (password) {
-      const passwordHash = await Bun.password.hash(password);
+      const passwordHash = await hashPassword(password);
       if (target_language) {
         const stmt = db.prepare('UPDATE users SET name = ?, password_hash = ?, target_language = ? WHERE id = ?');
         await stmt.run(name, passwordHash, target_language, userId);
