@@ -149,20 +149,28 @@ function MainAppLayout({
   });
 
   // Mutations
+  // Catatan: body POST harus camelCase — backend Zod (logs.ts) memvalidasi userInput/aiFeedback/improvedVersion/audioKey
   const saveLogMutation = useMutation({
-    mutationFn: (newLog: Omit<PracticeLog, 'id' | 'created_at'>) => 
+    mutationFn: (newLog: { userInput: string; aiFeedback: string; improvedVersion: string; audioKey?: string | null }) =>
       fetch(`${API_URL}/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newLog, userId: activeUser.id }),
-      }).then(res => res.json()),
+      }).then(async res => {
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.error || 'Failed to save log');
+        return json;
+      }),
+    onError: (err: any) => {
+      setApiErrorMsg(err?.message || 'Failed to save log. Please try again.');
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['logs', activeUser.id] });
       queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
       setUserInput('');
       setImprovedVersion('');
       setAiFeedback('');
-      
+
       // Trigger a local notification reminder when successfully practicing
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('SwaraLingo Practice Saved!', {
@@ -235,7 +243,7 @@ function MainAppLayout({
       }
     }
     saveLogMutation.mutate(
-      { user_input: userInput, ai_feedback: aiFeedback, improved_version: improvedVersion, audio_key: audioKey },
+      { userInput, aiFeedback, improvedVersion, audioKey },
       {
         onError: () => {
           // Bersihkan orphan object R2 jika save log gagal
