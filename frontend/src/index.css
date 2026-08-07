@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* 1. Tentukan CSS Variables HSL di index.css untuk Dark mode sesuai panduan skill-ui-design-system */
+:root {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 5.9%;
+  --card-border: 240 3.7% 15.9%;
+  
+  --primary: 142.1 76.2% 36.3%; /* Premium emerald green */
+  --primary-hover: 142.1 70% 45%;
+  --primary-glow: rgba(34, 197, 94, 0.15);
+  
+  --border: 240 3.7% 15.9%;
+  --input-bg: 240 10% 4.9%;
+  --input-focus: 142.1 76.2% 36.3%;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 3. Efek subtle glassmorphism sesuai panduan skill-ui-design-system */
+.glass-panel {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 4. Mikro-animasi pada button/card sesuai panduan skill-ui-design-system */
+.premium-btn-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-btn-hover:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.premium-btn-hover:active {
+  transform: scale(0.98);
+}
+
+/* Card Flip 3D Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+.transform-style-3d {
+  transform-style: preserve-3d;
+}

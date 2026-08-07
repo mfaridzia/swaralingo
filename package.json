@@ -1,0 +1,20 @@
+{
+  "name": "learn-english",
+  "version": "1.0.0",
+  "description": "> **Enterprise-Grade Architecture Blueprint for Google Antigravity & Claude Code CLI**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mfaridzia/ai-fullstack-boilerplate.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mfaridzia/ai-fullstack-boilerplate/issues"
+  },
+  "homepage": "https://github.com/mfaridzia/ai-fullstack-boilerplate#readme"
+}

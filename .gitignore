@@ -21,3 +21,7 @@ yarn-debug.log*
 bun.lockb
 .DS_Store
 thumbs.db
+*.db
+*.db-journal
+sqlite.db
+database.db
