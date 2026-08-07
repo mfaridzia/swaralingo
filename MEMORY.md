@@ -59,6 +59,7 @@
 - **ADR-045**: Migrasi model Gemini di backend dari `gemini-3.5-flash` ke `gemini-3.5-flash-lite` untuk memperluas batas rate limit harian dari 20 request per hari menjadi 500 request per hari secara gratis di Free Tier.
 - **ADR-046**: Konfigurasi rewrite routing di `vercel.json` (`source: "/(.*)" -> "/index.html"`) untuk mengatasi error 404 pada saat hard-refresh di routing SPA React Router.
 - **ADR-047**: Mengintegrasikan Cloudflare Web Analytics tracking script dan konfigurasi `[observability]` logs di `wrangler.toml` untuk pengumpulan metrik performa serta penelusuran logs secara persisten.
+- **ADR-048**: Transkripsi audio via **Cloudflare Workers AI Whisper** (`@cf/openai/whisper-large-v3-turbo`, binding `[ai] AI`) sebagai jalur utama — gratis, kuota lepas dari Gemini. Fallback otomatis ke Gemini `gemini-3.5-flash-lite` saat binding AI tidak tersedia (local `bun dev`) atau Whisper gagal. Format webm/wav/mp3/ogg/flac/m4a didukung, max 25MB.
 
 ## 🎨 Design System & UI Updates
 
