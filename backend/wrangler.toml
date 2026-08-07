@@ -29,3 +29,7 @@ NODE_ENV = "production"
 [[r2_buckets]]
 binding = "AUDIO_BUCKET"
 bucket_name = "swaralingo-audio"
+
+# Workers AI — transkripsi suara Whisper gratis (fallback Gemini untuk bun dev lokal)
+[ai]
+binding = "AI"

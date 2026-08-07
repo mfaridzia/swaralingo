@@ -1,10 +1,27 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getContext } from 'hono/context-storage';
 import { getEnvVar } from '../config.js';
 import { getAudioStorage } from '../audioStorage.js';
 
 const transcribeRouter = new Hono();
+
+const WHISPER_MODEL = '@cf/openai/whisper-large-v3-turbo';
+
+interface WorkerAiBinding {
+  run(model: string, inputs: Record<string, unknown>): Promise<unknown>;
+}
+
+// Akses binding AI Workers (hanya ada di Cloudflare Workers / wrangler dev; kosong di bun dev lokal)
+function getAiBinding(): WorkerAiBinding | undefined {
+  try {
+    const env = getContext().env as Record<string, unknown>;
+    return env.AI as WorkerAiBinding | undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const transcribeSchema = z.object({
   audioKey: z.string().optional(),
@@ -20,6 +37,32 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
     bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   }
   return btoa(bin);
+}
+
+// Jalur utama: Workers AI Whisper (gratis, kuota lepas dari Gemini). Gagal → fallback Gemini di bawah.
+async function transcribeWithWhisper(base64Data: string): Promise<string> {
+  const ai = getAiBinding();
+  if (!ai) throw new Error('AI binding not available');
+  const result = await ai.run(WHISPER_MODEL, { audio: base64Data });
+  const text = (result as { text?: string }).text?.trim();
+  if (!text) throw new Error('Whisper returned empty transcription');
+  return text;
+}
+
+// Fallback: Gemini Multimodal — dipakai di local bun dev (tanpa AI binding) atau saat Whisper gagal
+async function transcribeWithGemini(base64Data: string, mimeType: string, targetLanguage: string): Promise<string> {
+  const apiKey = getEnvVar('GEMINI_API_KEY');
+  if (!apiKey) throw new Error('Gemini API Key is missing in server .env configuration.');
+
+  const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
+  const result = await model.generateContent([
+    { inlineData: { data: base64Data, mimeType: mimeType } },
+    { text: `Transcribe this audio file exactly as spoken in ${targetLanguage}. Write only the transcription. If there are filler words, transcribe them. Do not write any other explanation or pleasantries. If there is no voice, write [No Voice Detected].` }
+  ]);
+
+  const transcription = result.response.text().trim();
+  if (!transcription) throw new Error('Gemini returned empty transcription');
+  return transcription;
 }
 
 export const transcribeHandler = async (c: any) => {
@@ -59,19 +102,14 @@ export const transcribeHandler = async (c: any) => {
       }
     }
 
-    const apiKey = getEnvVar('GEMINI_API_KEY');
-    if (!apiKey) {
-      return c.json({ success: false, error: 'Gemini API Key is missing in server .env configuration.' }, 500);
+    try {
+      const transcription = await transcribeWithWhisper(base64Data);
+      return c.json({ success: true, transcription });
+    } catch {
+      // Whisper tidak tersedia / gagal — fallback ke Gemini
+      const transcription = await transcribeWithGemini(base64Data, mimeType, targetLanguage);
+      return c.json({ success: true, transcription });
     }
-
-    const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
-    const result = await model.generateContent([
-      { inlineData: { data: base64Data, mimeType: mimeType } },
-      { text: `Transcribe this audio file exactly as spoken in ${targetLanguage}. Write only the transcription. If there are filler words, transcribe them. Do not write any other explanation or pleasantries. If there is no voice, write [No Voice Detected].` }
-    ]);
-
-    const transcription = result.response.text().trim();
-    return c.json({ success: true, transcription });
   } catch (error: any) {
     const isQuotaExceeded = error.message?.includes('Quota exceeded') || error.status === 429;
     return c.json({ success: false, error: isQuotaExceeded ? 'Gemini API quota exceeded. Please try again later.' : 'Failed to transcribe: ' + error.message }, 500);
