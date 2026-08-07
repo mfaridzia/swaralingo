@@ -92,6 +92,49 @@ analyzeRouter.post('/', analyzeRateLimiter, async (c) => {
   }
 });
 
+// Personalized Daily Challenge — endpoint dedicated, bukan lewat /analyze
+// (system prompt /analyze memaksa format grammar-correction → instruksi malah di-echo balik)
+analyzeRouter.post('/challenge', analyzeRateLimiter, async (c) => {
+  try {
+    const body = await c.req.json();
+    const { mistakesContext = '', targetLanguage = 'English' } = body;
+
+    const apiKey = getEnvVar('GEMINI_API_KEY');
+    if (!apiKey) {
+      return c.json({ success: false, error: 'Gemini API Key is missing in server .env configuration.' }, 500);
+    }
+
+    try {
+      const systemPrompt = `You are an expert ${targetLanguage} language coach. Based on the user's recent grammar mistakes, generate ONE personalized daily practice challenge. Ask them to write a sentence about a specific corporate scenario, standard IT standup event, or daily work task — focusing on the grammar patterns they got wrong. Keep it brief, friendly, and under 3 sentences. Format your output strictly as a JSON object with one field: { "challenge": "The challenge text here" }`;
+
+      const modelWithSystemInstruction = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash-lite', systemInstruction: systemPrompt });
+
+      const response = await modelWithSystemInstruction.generateContent({
+        contents: [{ role: 'user', parts: [{ text: `My recent mistakes:\n${mistakesContext || 'No mistakes recorded yet. I am a starter practitioner.'}` }] }],
+        generationConfig: { responseMimeType: 'application/json' }
+      });
+
+      const resText = response.response.text().trim();
+      const firstBrace = resText.indexOf('{');
+      const lastBrace = resText.lastIndexOf('}');
+      if (firstBrace === -1 || lastBrace === -1) {
+        return c.json({ success: false, error: 'Invalid AI response format' }, 502);
+      }
+      const parsed = JSON.parse(resText.slice(firstBrace, lastBrace + 1));
+      const challenge = parsed.challenge || '';
+      if (!challenge) {
+        return c.json({ success: false, error: 'Empty challenge generated' }, 502);
+      }
+      return c.json({ success: true, data: { challenge } });
+    } catch (err: any) {
+      const isQuotaExceeded = err.message?.includes('Quota exceeded') || err.status === 429;
+      return c.json({ success: false, error: isQuotaExceeded ? 'Gemini API quota exceeded. Please try again in 1 minute.' : 'Failed to generate challenge: ' + err.message }, 500);
+    }
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 import { transcribeHandler } from './transcribe.js';
 
 // Alias agar URL lama /api/analyze/transcribe tetap berfungsi (handler utama di /api/transcribe)

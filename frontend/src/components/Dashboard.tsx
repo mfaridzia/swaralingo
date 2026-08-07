@@ -67,7 +67,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Load cached daily challenge from localStorage on mount
   React.useEffect(() => {
     const dateStr = getTodayDateString();
-    const cached = localStorage.getItem(`fluency_daily_challenge_${dateStr}`);
+    const cached = localStorage.getItem(`fluency_daily_challenge_v2_${dateStr}`);
     if (cached) {
       setGeneratedChallenge(cached);
     }
@@ -114,11 +114,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         .map(l => `- Original: "${l.user_input}"\n  Correction: "${l.improved_version}"\n  Feedback: "${l.ai_feedback}"`)
         .join('\n');
 
-      const response = await apiFetch('/analyze', {
+      const response = await apiFetch('/analyze/challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sentence: `[GENERATE_CHALLENGE_REQUEST] Here is my recent practice history where I made mistakes:\n${mistakesContext || "No mistakes recorded yet. I am a starter practitioner."}\n\nAnalyze my weaknesses and generate a personalized daily challenge prompt. Ask me to write a sentence describing a specific corporate scenario, standard IT standup event, or daily task where I must practice using correct structures. Keep the prompt brief, friendly, under 3 sentences, and challenging.`,
+          mistakesContext,
           targetLanguage: savedUser ? JSON.parse(savedUser).target_language || 'English' : 'English'
         })
       });
@@ -126,20 +126,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const resData = await response.json();
       const dateStr = getTodayDateString();
       if (resData.success) {
-        // Retrieve the result from improved (which we repurposed as raw output for challenge)
-        const challengeText = resData.data.improved;
+        const challengeText = resData.data.challenge;
         setGeneratedChallenge(challengeText);
-        localStorage.setItem(`fluency_daily_challenge_${dateStr}`, challengeText);
+        localStorage.setItem(`fluency_daily_challenge_v2_${dateStr}`, challengeText);
       } else {
         const fallbackText = "Challenge: Write a sentence describing what you did yesterday at work using past tense correctly.";
         setGeneratedChallenge(fallbackText);
-        localStorage.setItem(`fluency_daily_challenge_${dateStr}`, fallbackText);
+        localStorage.setItem(`fluency_daily_challenge_v2_${dateStr}`, fallbackText);
       }
     } catch (err) {
       const fallbackText = "Challenge: Write a sentence describing what you did yesterday at work using past tense correctly.";
       setGeneratedChallenge(fallbackText);
       const dateStr = getTodayDateString();
-      localStorage.setItem(`fluency_daily_challenge_${dateStr}`, fallbackText);
+      localStorage.setItem(`fluency_daily_challenge_v2_${dateStr}`, fallbackText);
     } finally {
       setIsGeneratingChallenge(false);
     }
