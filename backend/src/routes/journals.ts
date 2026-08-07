@@ -45,7 +45,7 @@ journalsRouter.get('/prompt', async (c) => {
       });
     }
 
-    const model = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash' });
+    const model = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
     const result = await model.generateContent(
       `You are an empathetic journaling coach for tech professionals. Generate a single, short reflective question in ${targetLanguage} for a software engineer's journal entry. It should encourage reflection on either: technical achievements, soft skills, meeting emotions, or career goals. Keep it under 2 sentences. Return only the question without any intro, outro, or quotes.`
     );
@@ -99,7 +99,7 @@ Format your output strictly as a JSON object with these two fields:
 }`;
 
         const model = getAiClient().getGenerativeModel({ 
-          model: 'gemini-3.5-flash',
+          model: 'gemini-3.5-flash-lite',
           generationConfig: { responseMimeType: 'application/json' }
         });
 

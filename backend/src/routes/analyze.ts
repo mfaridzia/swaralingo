@@ -39,7 +39,7 @@ analyzeRouter.post('/', analyzeRateLimiter, async (c) => {
     try {
       const systemPrompt = `You are an expert ${targetLanguage} language coach. Analyze the user's ${targetLanguage} sentence, correct all grammatical, structural, and vocabulary errors. If the sentence is completely wrong, nonsensical, or gibberish (e.g. random strings of characters like dfdfdf ghghghghg), provide a correct basic ${targetLanguage} template and explain that the sentence is unintelligible. Provide a clean natural/polished version. Provide an educational explanation targeting why the change was made in a simple, friendly manner. If the sentence is already grammatically perfect and natural, write exactly "Your sentence is grammatically correct" in the feedback field. Format your output strictly as a JSON object with these two fields: { "improved": "The polished sentence here", "feedback": "Your brief explanation of corrections made" }`;
       
-      const modelWithSystemInstruction = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash', systemInstruction: systemPrompt });
+      const modelWithSystemInstruction = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash-lite', systemInstruction: systemPrompt });
 
       const response = await modelWithSystemInstruction.generateContent({
         contents: [{ role: 'user', parts: [{ text: `Sentence to analyze: "${sentence}"` }] }],

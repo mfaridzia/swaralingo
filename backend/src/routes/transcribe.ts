@@ -64,7 +64,7 @@ export const transcribeHandler = async (c: any) => {
       return c.json({ success: false, error: 'Gemini API Key is missing in server .env configuration.' }, 500);
     }
 
-    const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({ model: 'gemini-3.5-flash' });
+    const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
     const result = await model.generateContent([
       { inlineData: { data: base64Data, mimeType: mimeType } },
       { text: `Transcribe this audio file exactly as spoken in ${targetLanguage}. Write only the transcription. If there are filler words, transcribe them. Do not write any other explanation or pleasantries. If there is no voice, write [No Voice Detected].` }
