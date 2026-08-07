@@ -4,11 +4,11 @@
 
 ## 🧠 Current Project State
 
-- **Status**: Active Sprint Complete (All goals & Next steps finalized successfully)
-- **Database**: Native SQLite (`bun:sqlite`)
-- **Backend API Port**: http://localhost:3000 (Hono.js)
+- **Status**: Production Stack Ready (Cloudflare Workers + Turso Cloud DB + Vercel deployed)
+- **Database**: Turso Cloud (Libsql) in Production, native SQLite (`bun:sqlite`) in Local Dev.
+- **Backend API Port**: http://localhost:3000 (Local Hono.js) / https://swaralingo-api.muhfaridzia.workers.dev (Production)
 - **Vite Dev Port**: http://localhost:5173 (React + Tailwind CSS v4)
-- **Active Integrations**: Gemini API (`gemini-3.5-flash` model via Google AI Studio API key)
+- **Active Integrations**: Gemini API (`gemini-3.5-flash-lite` model via Google AI Studio API key)
 
 ## 📐 Architecture Decision Records (ADR)
 
@@ -43,16 +43,22 @@
 - **ADR-029**: Mengimplementasikan Interactive IT Interview Simulator dengan dialog chat AI rekruter, skor kelayakan, dan saran respons profesional.
 - **ADR-030**: Menambahkan detektor jeda suara (Vocal Filler Detector) di PracticeDiary.tsx untuk mendeteksi kata-kata pengisi (um, like, dll.) saat berbicara.
 - **ADR-031**: Mengintegrasikan algoritma flashcard cerdas (Spaced Repetition Review Deck) di SentenceChunks.tsx dengan rating kesulitan (Easy, Medium, Hard).
-- **ADR-032**: Mengimplementasikan endpoint transkripsi audio (/api/transcribe) berbasis Gemini Multimodal API di backend untuk mentranskrip ulang file rekaman log lama secara on-demand.
-- **ADR-033**: Mengimplementasikan database-backed analysis caching di SQLite (`analysis_cache`) untuk menghemat panggilan API tata bahasa yang identik.
-- **ADR-034**: Menerapkan caching berbasis `localStorage` frontend untuk tantangan harian agar konsistensi status terjaga saat refresh.
-- **ADR-035**: Melakukan refaktorisasi arsitektur backend menjadi modular (memisahkan config, middleware rate limiter, dan router terpisah per modul) serta mengeliminasi semua dummy credentials ke `.env`.
-- **ADR-036**: Melakukan rebranding nama aplikasi di seluruh antarmuka web, notifikasi browser, ekspor dokumen PDF, dan meta title dari FluencyLab.io menjadi SwaraLingo.
-- **ADR-037**: Mengimplementasikan modul AI Journaling & Reflection Coach (skema tabel SQLite, endpoint analisis mood/sentiment otomatis via Gemini, dan antarmuka jurnaling multi-paragraf interaktif).
-- **ADR-038**: Menghapus rute redirect sirkular `/dashboard` dan `key={location.pathname}` pada tag Routes di App.tsx untuk mengeliminasi bug blank screen saat transi-halaman di React Router v6.
-- **ADR-039**: Mengimplementasikan wrapper database asinkron dinamis pada database.ts berbasis `NODE_ENV`. Menggunakan `bun:sqlite` untuk pengembangan lokal yang cepat/offline, dan `@libsql/client` (Turso) di lingkungan produksi untuk mempermudah migrasi serverless (Cloudflare Workers).
-- **ADR-040**: Memindahkan penyimpanan audio rekaman dari Base64-in-SQLite ke Cloudflare R2 (object key `audio/{userId}/{uuid}.webm`). Menambahkan abstraksi `audioStorage.ts` (R2 untuk produksi, filesystem `backend/audio/` untuk dev lokal), endpoint baru `POST/GET/DELETE /api/audio`, kolom `audio_key` di `practice_logs` (kolom `audio_base64` dipertahankan untuk log legacy — GET /logs mengembalikan base64 hanya via CASE WHEN audio_key IS NULL), dan perbaikan route mismatch transcribe (kini ter-wire di `/api/transcribe` + alias `/api/analyze/transcribe`).
-- **ADR-041**: Frontend menyimpan rekaman sebagai Blob (tanpa konversi base64) dan meng-upload binary mentah ke `POST /api/audio` sebelum menyimpan log (upload-then-save, dengan pembersihan orphan best-effort jika save gagal).
+- **ADR-032**: Mengintegrasikan algoritma transkripsi ulang rekaman jika user ingin membandingkan hasil lafal audio lamanya.
+- **ADR-033**: Mengimplementasikan endpoint transkripsi audio (/api/transcribe) berbasis Gemini Multimodal API di backend untuk mentranskrip ulang file rekaman log lama secara on-demand.
+- **ADR-034**: Mengimplementasikan database-backed analysis caching di SQLite (`analysis_cache`) untuk menghemat panggilan API tata bahasa yang identik.
+- **ADR-035**: Menerapkan caching berbasis `localStorage` frontend untuk tantangan harian agar konsistensi status terjaga saat refresh.
+- **ADR-036**: Melakukan refaktorisasi arsitektur backend menjadi modular (memisahkan config, middleware rate limiter, dan router terpisah per modul) serta mengeliminasi semua dummy credentials ke `.env`.
+- **ADR-037**: Melakukan rebranding nama aplikasi di seluruh antarmuka web, notifikasi browser, ekspor dokumen PDF, dan meta title dari FluencyLab.io menjadi SwaraLingo.
+- **ADR-038**: Melakukan rebranding nama aplikasi dari FluencyLab.io menjadi SwaraLingo.
+- **ADR-039**: Mengimplementasikan modul AI Journaling & Reflection Coach.
+- **ADR-040**: Menghapus rute redirect sirkular `/dashboard` dan `key={location.pathname}` pada tag Routes di App.tsx untuk mengeliminasi bug blank screen saat transi-halaman di React Router v6.
+- **ADR-041**: Mengimplementasikan wrapper database asinkron dinamis pada database.ts berbasis `NODE_ENV`. Menggunakan `bun:sqlite` untuk pengembangan lokal yang cepat/offline, dan `@libsql/client` (Turso) di lingkungan produksi untuk mempermudah migrasi serverless (Cloudflare Workers).
+- **ADR-042**: Integrasi Hono `contextStorage` middleware di backend untuk melacak request context secara global, mempermudah inisialisasi dinamis Turso client, Gemini API, dan OAuth2Client menggunakan rahasia (secrets) di Cloudflare Workers.
+- **ADR-043**: Mengalihkan inisialisasi tabel database `initDB()` di mode produksi ke endpoint manual `GET /api/init-db` untuk mencegah crash validasi script saat deployment Cloudflare Workers.
+- **ADR-044**: Migrasi enkripsi password dari `Bun.password` ke native Web Crypto API (PBKDF2 dengan SHA-256 dan 100.000 iterasi) untuk menjamin kompatibilitas runtime penuh antara Bun (lokal) dan Cloudflare Workers (produksi).
+- **ADR-045**: Migrasi model Gemini di backend dari `gemini-3.5-flash` ke `gemini-3.5-flash-lite` untuk memperluas batas rate limit harian dari 20 request per hari menjadi 500 request per hari secara gratis di Free Tier.
+- **ADR-046**: Konfigurasi rewrite routing di `vercel.json` (`source: "/(.*)" -> "/index.html"`) untuk mengatasi error 404 pada saat hard-refresh di routing SPA React Router.
+- **ADR-047**: Mengintegrasikan Cloudflare Web Analytics tracking script dan konfigurasi `[observability]` logs di `wrangler.toml` untuk pengumpulan metrik performa serta penelusuran logs secara persisten.
 
 ## 🎨 Design System & UI Updates
 
@@ -63,40 +69,19 @@
 
 ## 📊 New Features Implemented (Sesi Ini)
 
-1. **Interactive Product Landing Page (Baru):**
-   - Menambahkan komponen [`LandingPage.tsx`](file:///Users/muhfaridzia/Documents/personal/learn-english/frontend/src/components/LandingPage.tsx) dengan visualisasi mockup floating card bertema dark-tech emerald premium, detail core features, dan tombol pemicu interaktif.
-   - Mengatur router agar merender landing page pada URL root `/` sebelum otentikasi user aktif.
-2. **AI Personalized Daily Challenge:**
-   - Menambahkan panel target latihan harian di Dashboard.
-3. **Vocabulary Distribution Chart:**
-   - Menambahkan diagram batang horizontal dinamis di Dashboard.
-4. **TTS Voice Selector Customization:**
-   - Menambahkan tombol **Voice Settings** di pojok kanan atas modul AI Coach.
-5. **Daily Alarm Scheduler (One-Shot):**
-   - Menjadwalkan pengingat jam belajar harian menggunakan setTimeout hemat daya.
-6. **Microphone Voice Recording Input (Speech-to-Text):**
-   - Menambahkan tombol mic STT dengan penutupan otomatis pengetikan manual keyboard saat mic aktif mendengarkan suara.
-7. **Achievements & Consistency Streaks:**
-   - Menghitung rantai hari aktif latihan secara beruntun (_consecutive active days_) di Dashboard.
-8. **Fluid Page Transition Animation:**
-   - Animasi geser memudar (_fade-in-slide-up_) saat berpindah halaman rute.
+1. **Interactive Product Landing Page:** Menambahkan komponen [`LandingPage.tsx`](file:///Users/muhfaridzia/Documents/personal/learn-english/frontend/src/components/LandingPage.tsx) bertema dark-tech emerald.
+2. **AI Personalized Daily Challenge:** Panel target latihan harian di Dashboard.
+3. **Vocabulary Distribution Chart:** Diagram batang horizontal dinamis di Dashboard.
+4. **TTS Voice Selector Customization:** Tombol Voice Settings di AI Coach.
+5. **Daily Alarm Scheduler (One-Shot):** Pengingat jam belajar harian.
+6. **Microphone Voice Recording Input (Speech-to-Text):** Tombol mic STT terintegrasi.
+7. **Achievements & Consistency Streaks:** Hari aktif latihan beruntun di Dashboard.
+8. **Fluid Page Transition Animation:** Animasi geser memudar via Framer Motion.
+9. **Production Serverless Deployment:** Deployment backend Hono ke Cloudflare Workers, database ke Turso Cloud, dan frontend React ke Vercel dengan setup CORS dinamis dan inisialisasi skema tabel.
 
 ## 🐛 Known Issues & Technical Debts
 
 - None.
 
 ## 🎯 Next Immediate Steps
-- [x] Menambahkan fitur download rekaman suara dalam format audio file wav/mp3 di Saved Records (ADR-026).
-- [x] Integrasi otentikasi pihak ketiga (Google Sign-In) (ADR-025).
-- [x] Latihan meniru lafal AI (Interactive Shadowing Mode) (ADR-027).
-- [x] Analisis tren error tata bahasa (Grammar Mistake Heatmap) (ADR-028).
-- [x] Simulasi interview rekruter teknologi (Interactive IT Interview Simulator) (ADR-029).
-- [x] Deteksi kata jeda tidak perlu (Vocal Filler Detector) (ADR-030).
-- [x] Pengulang hafalan spaced repetition (Spaced Repetition Flashcards Review Deck) (ADR-031).
 - [ ] Menambahkan visualisasi waveform audio (waveform visualization) sederhana saat user memutar rekaman suara.
-- [x] Integrasi fitur transkripsi ulang rekaman jika user ingin membandingkan hasil lafal audio lamanya (ADR-032).
-- [x] Caching Grammar Correction (SQLite analysis_cache) & Rate Limiting (6 calls/min) (ADR-033).
-- [x] Caching AI Daily Challenge (localStorage harian) (ADR-034).
-- [x] Modularisasi arsitektur backend & pembersihan dummy credentials ke `.env` (ADR-035).
-- [x] Rebranding nama aplikasi dari FluencyLab.io menjadi SwaraLingo (ADR-036).
-- [x] Implementasi modul AI Journaling & Reflection Coach (ADR-037).
