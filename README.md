@@ -1,111 +1,107 @@
-# 🚀 Universal AI-Native Fullstack Boilerplate
+# 🎙️ SwaraLingo
 
-> **Enterprise-Grade Architecture Blueprint for Google Antigravity & Claude Code CLI**
+> **AI-Powered Active Speaking & Language Learning Practice Web App**
 
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
-![Hono.js](https://img.shields.io/badge/Hono.js-Ultra_Fast-orange.svg)
-![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-100%25_Type_Safe-green.svg)
-![Google Antigravity](https://img.shields.io/badge/Google_Antigravity-Compatible-4285F4.svg)
-![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-D97706.svg)
-
-Boilerplate ini dirancang khusus untuk mempermudah pembuatan aplikasi web fullstack modern di era **AI-Native Software Engineering**. Kompatibel 100% secara universal untuk **Google Antigravity CLI** (`agy`) dan **Claude Code CLI** (`claude`).
+SwaraLingo adalah platform web interaktif yang dirancang untuk membantu developer dan profesional teknologi melatih kemampuan berbicara (*active speaking*) bahasa asing secara mandiri, terarah, dan dianalisis langsung oleh AI secara real-time.
 
 ---
 
-## 📌 Features & Tech Stack
+## 📌 Core Features
 
-### 🎨 Tech Stack Summary
-- **Frontend**: React 18+ (Vite + TanStack Router & Query) ATAU Next.js 14+ App Router.
-- **Backend API**: Hono.js (Stateless, Ultra-Fast REST/RPC).
-- **ORM & Database**: Drizzle ORM dengan SQLite (Turso) atau PostgreSQL (Neon/Supabase).
-- **Validation**: Zod (100% Type-Safe dari API Request hingga Environment Variables).
-- **Testing**: Vitest (Unit/Integration) & Playwright (E2E).
-- **Observability**: Sentry Error Tracking & Structured JSON Logging.
+1. **Active Practice Diary (AI Coach):**
+   * Tulis atau rekam suaramu langsung melalui integrasi browser **Speech Recognition API**.
+   * Dapatkan umpan balik instan tata bahasa, kosa kata, dan versi kalimat yang lebih natural (*Polished Version*) dari **Gemini AI**.
+   * Dengar pelafalan natural menggunakan **Text-to-Speech (TTS)** dengan pilihan aksen/gender suara.
 
-### 🧠 Dual-Engine AI Architecture (`.agents/` & `.claude/`)
-- **12 Master Subagents**: UI/UX Designer, Code Reviewer, PM, Architect, Backend, Frontend, Fullstack, DB Specialist, QA/Security, SEO, A11y, DevOps.
-- **11 Universal Skills**: Production-grade procedures with YAML Frontmatter.
-- **Auto-Managed Memory (`MEMORY.md`)**: Anti-amnesia AI engine yang melacak progress & ADR secara otomatis.
-- **Scratchpad Isolation (`scratch/`)**: Folder terisolasi untuk eksperimen kode AI tanpa mengotori `src/`.
+2. **Saved Records & Audio Waveform:**
+   * Simpan riwayat latihan bersuaramu ke database (tersimpan dalam enkripsi base64).
+   * Putar kembali rekaman suara asli dan unduh sebagai file `.webm` lokal.
 
----
+3. **Interactive Shadowing Mode:**
+   * Latih pelafalanmu dengan meniru suara kalimat aslinya. AI akan membandingkan kesamaan teks transkrip suaramu dengan versi natural.
 
-## 📂 Directory Blueprint
+4. **IT Interview Simulator:**
+   * Lakukan simulasi wawancara kerja teknis dengan AI Recruiter. AI akan memberikan pertanyaan interaktif, menilai kecocokan jawabanmu, memberikan feedback tata bahasa, dan skor kelayakan.
 
-```text
-my-project/
-├── .agents/                           # 🚀 Google Antigravity CLI Native Directory
-│   ├── agents/                        # 12 Subagent Roles (.agents/agents/<name>.md)
-│   └── skills/                        # 11 Skills Procedures (.agents/skills/<folder>/SKILL.md)
-├── .claude/                           # 🚀 Claude Code CLI Native Directory
-│   ├── agents -> ../.agents/agents    # Symlink to Antigravity agents
-│   └── skills -> ../.agents/skills    # Symlink to Antigravity skills
-├── AGENTS.md                          # Antigravity Root Instructions
-├── CLAUDE.md                          # Claude Code Root Instructions
-├── ARCHITECTURE.md                    # System Architecture Specification
-├── STACK.md                           # Tech Stack Specifications & Selection Rules
-├── CODING_RULES.md                    # Universal Coding Rules & Guardrails
-├── WORKFLOW.md                        # Git Commit & Dev Workflow
-├── MEMORY.md                          # Shared Active Knowledge Bank (Auto-Managed)
-├── .gitignore                         # Production Git Ignore Rules
-└── scratch/                           # 🧪 Isolated Sandbox for AI Experiments (Git-Ignored)
-```
+5. **AI Journaling & Reflection Coach:**
+   * Tulis jurnal harian dalam target bahasa pilihanmu. AI akan menganalisis emosi/mood kamu secara otomatis (*Sentiment Analysis*) dan memberikan refleksi motivasional yang hangat.
+
+6. **Grammar Mistake Heatmap & Stats:**
+   * Lacak jenis-jenis kesalahan tata bahasa kamu (seperti preposisi, tenses, subjek-predikat) secara visual dengan grafik progress dan heatmap tren mingguan.
+
+7. **Spaced Repetition Flashcards:**
+   * Simpan kosa kata baru ke Chunks Bank dan pelajari kembali menggunakan metode kartu pengulangan berkala (*Spaced Repetition System*) berdasarkan tingkat kesulitan (Easy, Medium, Hard).
 
 ---
 
-## 🚀 Quick Start (Cara Pakai untuk Proyek Baru)
+## 🛠️ Tech Stack
 
-### 1. Clone atau Copy Boilerplate Ini
+### **Frontend**
+* **Framework:** React (Vite)
+* **Styling:** Tailwind CSS v4 (Sleek Dark Mode, Emerald Accents, Glassmorphism)
+* **Animation:** Framer Motion (Fluid Page Transitions)
+* **State & Query:** `@tanstack/react-query` & `react-router-dom`
+
+### **Backend**
+* **Framework:** Hono.js (Stateless, Ultra-Fast REST API)
+* **Runtime:** Bun
+* **AI Engine:** Google Gemini AI SDK (`gemini-3.5-flash`)
+
+### **Database (Multi-Env Setup)**
+* **Lokal Dev:** Serverless offline local SQLite database menggunakan native `bun:sqlite`.
+* **Produksi:** Cloud serverless SQLite menggunakan **Turso** (`@libsql/client`) melalui HTTP/WebSockets.
+
+---
+
+## 🚀 Quick Start (Menjalankan secara Lokal)
+
+### Prerequisites
+Pastikan kamu sudah menginstal [Bun](https://bun.sh) di komputermu.
+
+### 1. Clone Project
 ```bash
-git clone https://github.com/mfaridzia/ai-fullstack-boilerplate.git my-new-app
-cd my-new-app
+git clone https://github.com/mfaridzia/swaralingo.git
+cd swaralingo
 ```
 
-### 2. Mulai Koding Bersama AI CLI Pilihan Kamu
-Jalankan CLI pilihan kamu:
-- **Google Antigravity**:
-  ```bash
-  agy
-  ```
-- **Claude Code**:
-  ```bash
-  claude
-  ```
+### 2. Setup Environment Variables
+Buat file `.env` di folder `/backend` dan isi:
+```env
+PORT=3000
+GEMINI_API_KEY=your-gemini-api-key-here
+GOOGLE_CLIENT_ID=your-google-client-id-here
+CORS_ORIGIN=http://localhost:5173
+```
 
-### 3. Berikan Prompt Fitur Pertama Kamu
-Contoh prompt:
-> *"Tolong buatkan MVP SaaS Dashboard untuk Manajemen Tugas beserta autentikasi JWT dan DB schema Drizzle."*
-
-AI akan secara otomatis membaca arsitektur, me-launch subagent yang sesuai, mengeksekusi skill baku, dan memperbarui progress di `MEMORY.md`!
+### 3. Jalankan Aplikasi
+Jalankan perintah ini di root folder proyek:
+* **Jalankan Backend:**
+  ```bash
+  cd backend
+  bun install
+  bun run dev
+  ```
+* **Jalankan Frontend:**
+  ```bash
+  cd frontend
+  bun install
+  bun run dev
+  ```
+Buka **`http://localhost:5173`** di browsermu.
 
 ---
 
-## 🤖 Tim 12 Master Subagents
+## ☁️ Deployment Architecture (Rp 0 Production Stack)
 
-| Subagent | Description |
-| :--- | :--- |
-| `01-ui-ux-designer` | Merancang palet warna HSL, Tailwind Glassmorphism, Google Fonts, & micro-animations. |
-| `02-code-reviewer` | Meninjau type-safety, memory leaks, silent errors, & refactoring. |
-| `03-product-manager` | Menerjemahkan user request menjadi User Stories & Acceptance Criteria. |
-| `04-systems-architect` | Mendesain DB Schema Drizzle, API Contracts, & System Architecture. |
-| `05-backend-engineer` | Mengimplementasikan Hono.js routes, Zod validation, & Drizzle queries. |
-| `06-frontend-engineer` | Mengimplementasikan React components, TanStack Router/Query, & Tailwind. |
-| `07-fullstack-engineer` | Menghubungkan Backend & Frontend via Hono RPC Client. |
-| `08-database-specialist` | Mengelola Drizzle Kit migrations, indexing, & SQL optimization. |
-| `09-qa-security-auditor` | Audit keamanan OWASP Top 10, Vitest unit test, & Playwright E2E. |
-| `10-seo-specialist` | Optimasi Meta Tags, OpenGraph, Canonical Links, & JSON-LD. |
-| `11-a11y-specialist` | Memastikan kepatuhan WCAG 2.1 AA, ARIA attributes, & keyboard navigation. |
-| `12-devops-engineer` | Multi-stage Dockerfile, GitHub Actions CI/CD, & Vercel/Fly.io deployment. |
+Aplikasi ini dirancang modular agar dapat dideploy gratis ke serverless platform modern:
 
----
+* **Frontend:** Di-deploy ke **Vercel** / **Cloudflare Pages** (Menyajikan file statis React).
+* **Backend:** Di-deploy ke **Cloudflare Workers** (Menggunakan konfigurasi `wrangler.toml` yang tersedia di folder `/backend`).
+* **Database:** Di-host di **Turso** (SQLite cloud dengan persistent volume gratis).
 
-## 🛑 Git Strategy (Inclusions vs Exclusions)
-
-- **✅ Di-commit ke GitHub**: `.agents/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`, `CODING_RULES.md`, `ARCHITECTURE.md`, `STACK.md`, `MEMORY.md`.
-- **❌ Dilarang Commit (`.gitignore`)**: `.env` (Secrets), `scratch/` (Temporary experiments), `node_modules/`, `dist/`.
+*Untuk beralih ke mode produksi, cukup isi variabel `TURSO_DATABASE_URL` dan `TURSO_AUTH_TOKEN` pada environment variables Cloudflare Workers.*
 
 ---
 
 ## 📄 License
-
-MIT License. Free to use for personal & commercial projects!
+[MIT License](LICENSE) - Bebas digunakan dan dimodifikasi!
