@@ -75,15 +75,62 @@ export async function verifyToken(token: string): Promise<number | null> {
   }
 }
 
-// Middleware: ambil identitas dari Bearer token — semua route data user wajib lewat sini.
+// ===== Session cookie (HttpOnly — XSS tak bisa baca token) =====
+export const AUTH_COOKIE = 'swaralingo_session';
+const TOKEN_MAX_AGE = TOKEN_TTL_SECONDS;
+
+// Secure selalu ON (prod HTTPS; dev http://localhost diperlakukan browser sebagai secure context).
+// SameSite=None wajib karena FE (vercel.app) dan API (workers.dev) beda site — CSRF ditangani csrfProtect.
+export function setAuthCookie(c: Context, userId: number): Promise<void> {
+  return signToken(userId).then((token) => {
+    c.header(
+      'Set-Cookie',
+      `${AUTH_COOKIE}=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${TOKEN_MAX_AGE}`
+    );
+  });
+}
+
+export function clearAuthCookie(c: Context): void {
+  c.header('Set-Cookie', `${AUTH_COOKIE}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`);
+}
+
+function getCookieToken(c: Context): string {
+  const cookieHeader = c.req.header('Cookie') || '';
+  for (const part of cookieHeader.split(';')) {
+    const [name, ...rest] = part.trim().split('=');
+    if (name === AUTH_COOKIE) return rest.join('=');
+  }
+  return '';
+}
+
+// Middleware: identitas dari Bearer header (API client/curl) ATAU HttpOnly cookie (browser).
 export const requireAuth = async (c: Context, next: Next) => {
   const authHeader = c.req.header('Authorization') || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : getCookieToken(c);
   const userId = await verifyToken(token);
   if (userId === null) {
     return c.json({ success: false, error: 'Unauthorized: invalid or expired session token' }, 401);
   }
   c.set('authUserId', userId);
+  await next();
+};
+
+// ===== CSRF defense (wajib karena SameSite=None) =====
+// Request state-changing dari browser selalu bawa Origin → wajib ada di allowlist.
+// Tanpa Origin (curl, server-side) → lewat (pakai Bearer/API path).
+function getAllowedOrigins(): string[] {
+  const fromEnv = getEnvVar('CORS_ORIGIN').split(',').map((o) => o.trim()).filter(Boolean);
+  return [...new Set([...fromEnv, 'http://localhost:5173'])];
+}
+
+export const csrfProtect = async (c: Context, next: Next) => {
+  const method = c.req.method;
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+
+  const origin = c.req.header('Origin');
+  if (origin && !getAllowedOrigins().includes(origin)) {
+    return c.json({ success: false, error: 'Forbidden' }, 403);
+  }
   await next();
 };
 

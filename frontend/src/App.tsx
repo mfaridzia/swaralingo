@@ -17,7 +17,7 @@ import { InterviewSimulator } from './components/InterviewSimulator';
 import { JournalCoach } from './components/JournalCoach';
 import type { UserProfile } from './components/Auth';
 
-import { apiFetch, getToken, clearAuth } from './api';
+import { apiFetch, clearAuth } from './api';
 
 interface PracticeLog {
   id: number;
@@ -429,17 +429,15 @@ export default function App() {
   const [activeUser, setActiveUser] = useState<UserProfile | null>(null);
   const [initializing, setInitializing] = useState(true);
 
-  // Load session from localStorage on startup — wajib ada token JWT; tanpa token, sesi legacy dibersihkan (force re-login)
+  // Load session from localStorage; cookie HttpOnly terverifikasi server saat request pertama (401 → auto logout)
   useEffect(() => {
     const savedUser = localStorage.getItem('fluency_user');
-    if (savedUser && getToken()) {
+    if (savedUser) {
       try {
         setActiveUser(JSON.parse(savedUser));
       } catch (e) {
         clearAuth();
       }
-    } else {
-      clearAuth();
     }
     setInitializing(false);
   }, []);
@@ -452,6 +450,8 @@ export default function App() {
   const handleLogout = () => {
     setActiveUser(null);
     clearAuth();
+    // Hapus session cookie server-side
+    apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
   };
 
   if (initializing) {

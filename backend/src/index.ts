@@ -13,6 +13,7 @@ import audioRouter from './routes/audio.js';
 import transcribeRouter from './routes/transcribe.js';
 
 import { initDB } from './database.js';
+import { csrfProtect } from './middleware/auth.js';
 
 import { contextStorage } from 'hono/context-storage';
 
@@ -34,11 +35,15 @@ app.get('/api/init-db', async (c) => {
   }
 });
 
+// CSRF defense: state-changing request dari browser wajib Origin allowlist (cookie auth + SameSite=None)
+app.use('*', csrfProtect);
+
 app.use('/*', (c, next) => {
   const origin = c.env?.CORS_ORIGIN || CORS_ORIGIN;
   const corsMiddleware = cors({
     origin,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
   });
   return corsMiddleware(c, next);
 });

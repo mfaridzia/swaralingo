@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { OAuth2Client } from 'google-auth-library';
 import db from '../database.js';
 import { authRateLimiter } from '../middleware/rateLimiter.js';
-import { requireAuth, signToken } from '../middleware/auth.js';
+import { requireAuth, setAuthCookie, clearAuthCookie } from '../middleware/auth.js';
 import { getEnvVar } from '../config.js';
 
 const authRouter = new Hono();
@@ -98,7 +98,8 @@ authRouter.post('/google', authRateLimiter, async (c) => {
           const info = await stmt.run(mockEmail, mockName, 'GOOGLE_AUTH_EXTERNAL');
           user = { id: info.lastInsertRowid, name: mockName, email: mockEmail, target_language: 'English' };
         }
-        return c.json({ success: true, data: { ...user, token: await signToken(user.id) } });
+        await setAuthCookie(c, user.id);
+        return c.json({ success: true, data: user });
       }
       throw verifyErr;
     }
@@ -116,7 +117,8 @@ authRouter.post('/google', authRateLimiter, async (c) => {
       user = { id: info.lastInsertRowid, name, email, target_language: 'English' };
     }
 
-    return c.json({ success: true, data: { ...user, token: await signToken(user.id) } });
+    await setAuthCookie(c, user.id);
+    return c.json({ success: true, data: user });
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     return c.json({ success: false, error: 'Failed to verify Google Sign-In: ' + error.message }, 500);
@@ -145,7 +147,8 @@ authRouter.post('/register', authRateLimiter, async (c) => {
       const stmt = db.prepare('INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)');
       const info = await stmt.run(email, name, passwordHash);
 
-      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English', token: await signToken(Number(info.lastInsertRowid)) } }, 201);
+      await setAuthCookie(c, Number(info.lastInsertRowid));
+      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English' } }, 201);
     } catch (dbErr: any) {
       if (dbErr.message.includes('UNIQUE constraint failed')) {
         return c.json({ success: false, error: 'Email already registered' }, 400);
@@ -160,6 +163,12 @@ authRouter.post('/register', authRateLimiter, async (c) => {
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
+});
+
+// Logout: hapus session cookie
+authRouter.post('/logout', requireAuth, async (c) => {
+  clearAuthCookie(c);
+  return c.json({ success: true, data: null });
 });
 
 authRouter.post('/login', authRateLimiter, async (c) => {
@@ -188,7 +197,8 @@ authRouter.post('/login', authRateLimiter, async (c) => {
       return c.json({ success: false, error: 'Invalid email or password' }, 401);
     }
 
-    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language, token: await signToken(user.id) } });
+    await setAuthCookie(c, user.id);
+    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language } });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }
