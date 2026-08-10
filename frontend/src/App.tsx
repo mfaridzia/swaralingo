@@ -119,6 +119,19 @@ function MainAppLayout({
     return () => window.removeEventListener('chunkAdded', handleRefetch);
   }, [queryClient, activeUser.id]);
 
+  // Listen to sync completion — refetch queries so UI shows newly synced data
+  useEffect(() => {
+    const handleSynced = () => {
+      queryClient.invalidateQueries({ queryKey: ['logs', activeUser.id] });
+      queryClient.invalidateQueries({ queryKey: ['chunks', activeUser.id] });
+      queryClient.invalidateQueries({ queryKey: ['journals', activeUser.id] });
+      queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
+    };
+
+    window.addEventListener('swaralingo:synced', handleSynced);
+    return () => window.removeEventListener('swaralingo:synced', handleSynced);
+  }, [queryClient, activeUser.id]);
+
   // Determine active tab class visually in Navbar based on current URL path
   const getActiveTab = (): 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' => {
     if (location.pathname === '/dashboard/chunks') return 'chunks';
@@ -241,7 +254,7 @@ function MainAppLayout({
         if (audioBlob) {
           audioBlobId = await enqueueAudio(audioBlob);
         }
-        await enqueueMutation('logs', 'insert', {
+        const clientId = await enqueueMutation('logs', 'insert', {
           user_input: userInput,
           ai_feedback: aiFeedback,
           improved_version: improvedVersion,
@@ -252,8 +265,10 @@ function MainAppLayout({
         setUserInput('');
         setImprovedVersion('');
         setAiFeedback('');
-        // Refresh UI from local Dexie + trigger sync if online
-        queryClient.invalidateQueries({ queryKey: ['logs', activeUser?.id] });
+        // Update UI from Dexie directly (no server refetch — entry not synced yet)
+        const { db } = await import('./offline/db/dexie');
+        const allLogs = await db.logs.orderBy('created_at').reverse().toArray();
+        queryClient.setQueryData(['logs', activeUser?.id], { success: true, data: allLogs });
         queryClient.invalidateQueries({ queryKey: ['stats', activeUser?.id] });
       } catch (err: any) {
         setApiErrorMsg(err?.message || 'Failed to save offline. Storage may be full.');

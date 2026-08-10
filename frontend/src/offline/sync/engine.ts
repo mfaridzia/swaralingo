@@ -136,6 +136,11 @@ export async function syncNow(): Promise<void> {
     // Update store with remaining count
     const remaining = await db.pendingSync.where('status').anyOf(['pending', 'failed']).count();
     updateSyncState(remaining, null);
+
+    // Notify UI that sync completed — React Query should refetch
+    if (typeof window !== 'undefined' && serverData.synced.length > 0) {
+      window.dispatchEvent(new CustomEvent('swaralingo:synced', { detail: { count: serverData.synced.length } }));
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Sync error';
     // Re-mark all syncing rows as failed
