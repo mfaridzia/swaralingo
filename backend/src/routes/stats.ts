@@ -12,7 +12,7 @@ statsRouter.get('/', async (c) => {
     const userId = c.get('authUserId');
     const range = c.req.query('range') || '7d';
 
-    const logs = await db.query('SELECT * FROM practice_logs WHERE user_id = ? ORDER BY created_at ASC').all(userId) as any[];
+    const logs = await db.query('SELECT * FROM practice_logs WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC').all(userId) as any[];
     
     const today = new Date();
     const chartData = [];

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookMarked, Download, Search, FileText, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { apiFetch } from '../api';
+import { SyncDot } from '../offline/indicator';
 
 interface PracticeLog {
   id: number;
@@ -11,6 +12,7 @@ interface PracticeLog {
   audio_base64?: string | null;
   audio_key?: string | null;
   created_at: string;
+  client_uuid?: string;
 }
 
 interface SentenceChunk {
@@ -302,7 +304,7 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
                   <span className="text-xs font-mono text-[#a1a1aa]">
                     {new Date(log.created_at).toLocaleDateString()}
                   </span>
-                  <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
+                  {log.client_uuid ? <SyncDot clientId={log.client_uuid} /> : <span className="h-2 w-2 rounded-full bg-[#22c55e]" />}
                 </div>
                 
                 <div className="space-y-1">

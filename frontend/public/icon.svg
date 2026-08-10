@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0f0b"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+    <linearGradient id="emerald" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Subtle ring -->
+  <rect x="8" y="8" width="496" height="496" rx="106" stroke="#22c55e" stroke-opacity="0.12" stroke-width="4"/>
+
+  <!-- Glow behind icon -->
+  <circle cx="256" cy="240" r="120" fill="url(#glow)"/>
+
+  <!-- Sound wave / speech icon -->
+  <!-- Center speaker cone -->
+  <path d="M180 200 L180 280 L230 320 L230 160 Z" fill="url(#emerald)" rx="4"/>
+
+  <!-- Wave arc 1 -->
+  <path d="M260 140 Q310 170 310 240 Q310 310 260 340"
+        stroke="#22c55e" stroke-width="24" stroke-linecap="round" fill="none" stroke-opacity="0.4"/>
+  <!-- Wave arc 2 -->
+  <path d="M280 100 Q350 150 350 240 Q350 330 280 380"
+        stroke="#22c55e" stroke-width="20" stroke-linecap="round" fill="none" stroke-opacity="0.25"/>
+  <!-- Wave arc 3 -->
+  <path d="M300 60 Q390 130 390 240 Q390 350 300 420"
+        stroke="#22c55e" stroke-width="16" stroke-linecap="round" fill="none" stroke-opacity="0.12"/>
+
+  <!-- Small text "SL" at bottom -->
+  <text x="256" y="450" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="48" font-weight="800" fill="#22c55e" fill-opacity="0.6" letter-spacing="12">SL</text>
+</svg>

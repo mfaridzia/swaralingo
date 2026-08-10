@@ -11,7 +11,7 @@ chunksRouter.use('*', requireAuth);
 chunksRouter.get('/', async (c) => {
   try {
     const userId = c.get('authUserId');
-    const chunks = await db.query('SELECT * FROM sentence_chunks WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+    const chunks = await db.query('SELECT * FROM sentence_chunks WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC').all(userId);
     return c.json({ success: true, data: chunks });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
@@ -22,7 +22,8 @@ const chunkSchema = z.object({
   phrase: z.string().min(1),
   meaning: z.string().min(1),
   example: z.string().min(1),
-  category: z.string().optional()
+  category: z.string().optional(),
+  clientUuid: z.string().uuid().optional(),
 });
 
 chunksRouter.post('/', async (c) => {
@@ -35,11 +36,23 @@ chunksRouter.post('/', async (c) => {
     }
 
     const userId = c.get('authUserId');
-    const { phrase, meaning, example, category = 'General' } = result.data;
+    const { phrase, meaning, example, category = 'General', clientUuid = null } = result.data;
+    const nowMs = Date.now();
+    if (clientUuid) {
+      const existing = await db.query(
+        'SELECT id FROM sentence_chunks WHERE client_uuid = ?'
+      ).get(clientUuid) as { id: number } | undefined;
+      if (existing) {
+        return c.json({
+          success: true,
+          data: { id: existing.id, userId, phrase, meaning, example, category },
+        });
+      }
+    }
     const stmt = db.prepare(
-      'INSERT INTO sentence_chunks (user_id, phrase, meaning, example, category) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO sentence_chunks (user_id, phrase, meaning, example, category, client_uuid, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = await stmt.run(userId, phrase, meaning, example, category);
+    const info = await stmt.run(userId, phrase, meaning, example, category, clientUuid, nowMs);
 
     return c.json({
       success: true,

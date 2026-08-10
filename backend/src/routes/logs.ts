@@ -15,7 +15,7 @@ logsRouter.get('/', async (c) => {
     const logs = await db.query(
       `SELECT id, user_id, user_input, ai_feedback, improved_version, created_at, audio_key,
               CASE WHEN audio_key IS NULL THEN audio_base64 END AS audio_base64
-       FROM practice_logs WHERE user_id = ? ORDER BY created_at DESC`
+       FROM practice_logs WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`
     ).all(userId);
     return c.json({ success: true, data: logs });
   } catch (error: any) {
@@ -28,7 +28,8 @@ const practiceLogSchema = z.object({
   aiFeedback: z.string().min(1),
   improvedVersion: z.string().min(1),
   audioKey: z.string().nullable().optional(),
-  audioBase64: z.string().nullable().optional() // diterima dari client lama; tidak di-echo kembali
+  audioBase64: z.string().nullable().optional(), // diterima dari client lama; tidak di-echo kembali
+  clientUuid: z.string().uuid().optional(),       // offline-first sync idempotency
 });
 
 logsRouter.post('/', async (c) => {
@@ -41,11 +42,24 @@ logsRouter.post('/', async (c) => {
     }
 
     const userId = c.get('authUserId');
-    const { userInput, aiFeedback, improvedVersion, audioKey = null, audioBase64 = null } = result.data;
+    const { userInput, aiFeedback, improvedVersion, audioKey = null, audioBase64 = null, clientUuid = null } = result.data;
+    const nowMs = Date.now();
+    if (clientUuid) {
+      // Offline-first: idempotent insert — check if this client row already exists
+      const existing = await db.query(
+        'SELECT id FROM practice_logs WHERE client_uuid = ?'
+      ).get(clientUuid) as { id: number } | undefined;
+      if (existing) {
+        return c.json({
+          success: true,
+          data: { id: existing.id, userId, userInput, aiFeedback, improvedVersion, audioKey },
+        });
+      }
+    }
     const stmt = db.prepare(
-      'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_key, audio_base64) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_key, audio_base64, client_uuid, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = await stmt.run(userId, userInput, aiFeedback, improvedVersion, audioKey, audioBase64);
+    const info = await stmt.run(userId, userInput, aiFeedback, improvedVersion, audioKey, audioBase64, clientUuid, nowMs);
 
     return c.json({
       success: true,

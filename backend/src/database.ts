@@ -35,7 +35,7 @@ if (useLocalDb) {
   try {
     const bunSqliteLib = "bun:sqlite";
     const { Database } = await import(bunSqliteLib);
-    localDb = new Database("sqlite.db", { create: true });
+    localDb = new Database(process.env.DATABASE_PATH || "sqlite.db", { create: true });
   } catch (e) {
     // Runtime Bun tanpa bun:sqlite — luar biasa, biarkan useLocalDb tetap true tapi localDb null
     // dan method db melempar error jelas daripada crash saat import.
@@ -176,6 +176,27 @@ export async function initDB() {
     // Diabaikan jika kolom mistake_category sudah ada
   }
 
+  // Offline-first sync: updated_at (epoch ms), client_uuid (idempotency), deleted_at (soft delete)
+  try {
+    await db.run(`ALTER TABLE practice_logs ADD COLUMN updated_at INTEGER`);
+  } catch (e) {}
+  try {
+    await db.run(`ALTER TABLE practice_logs ADD COLUMN client_uuid TEXT`);
+  } catch (e) {}
+  try {
+    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_client_uuid ON practice_logs(client_uuid)`);
+  } catch (e) {}
+  try {
+    await db.run(`ALTER TABLE practice_logs ADD COLUMN deleted_at INTEGER`);
+  } catch (e) {}
+  // Backfill updated_at from created_at (strftime epoch seconds * 1000 = ms)
+  try {
+    await db.run(`UPDATE practice_logs SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`);
+  } catch (e) {}
+  try {
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_logs_client_uuid ON practice_logs(client_uuid)`);
+  } catch (e) {}
+
   // 3. Buat tabel sentence_chunks (dengan referensi user_id)
   await db.run(`
     CREATE TABLE IF NOT EXISTS sentence_chunks (
@@ -214,6 +235,26 @@ export async function initDB() {
     await db.run(`ALTER TABLE sentence_chunks ADD COLUMN easiness REAL DEFAULT 2.5`);
   } catch (e) { }
 
+  // Offline-first sync columns
+  try {
+    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN updated_at INTEGER`);
+  } catch (e) {}
+  try {
+    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN client_uuid TEXT`);
+  } catch (e) {}
+  try {
+    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_chunks_client_uuid ON sentence_chunks(client_uuid)`);
+  } catch (e) {}
+  try {
+    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN deleted_at INTEGER`);
+  } catch (e) {}
+  try {
+    await db.run(`UPDATE sentence_chunks SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`);
+  } catch (e) {}
+  try {
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_chunks_client_uuid ON sentence_chunks(client_uuid)`);
+  } catch (e) {}
+
   // 4. Buat tabel analysis_cache
   await db.run(`
     CREATE TABLE IF NOT EXISTS analysis_cache (
@@ -237,6 +278,26 @@ export async function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Offline-first sync columns
+  try {
+    await db.run(`ALTER TABLE journals ADD COLUMN updated_at INTEGER`);
+  } catch (e) {}
+  try {
+    await db.run(`ALTER TABLE journals ADD COLUMN client_uuid TEXT`);
+  } catch (e) {}
+  try {
+    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`);
+  } catch (e) {}
+  try {
+    await db.run(`ALTER TABLE journals ADD COLUMN deleted_at INTEGER`);
+  } catch (e) {}
+  try {
+    await db.run(`UPDATE journals SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`);
+  } catch (e) {}
+  try {
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`);
+  } catch (e) {}
 }
 
 export default db;

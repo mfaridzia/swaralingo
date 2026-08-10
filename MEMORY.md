@@ -69,6 +69,7 @@
 - **ADR-055**: Fix login gagal (password salah) tetap diredirect ke landing — `apiFetch` treat semua 401 sebagai session-expired + redirect, padahal backend `/auth/login` pakai 401 untuk credentials invalid. Fix: opsi `skipAuthRedirect` di `apiFetch`, dipakai endpoint auth (login/register/google) agar error server ("Invalid email or password", "Email already registered", "This account uses Google Sign-In") ditampilkan di form, bukan bounce.
 - **ADR-056**: Fix streak badge — `calculateStreak` sebelumnya derive dari `chartData` (window 7/30d) → streak panjang terpotong di ukuran window; plus perbandingan tanggal browser lokal (WIB) vs `created_at` UTC (`CURRENT_TIMESTAMP`) → latihan 00:00–06:59 WIB dihitung hari kemarin, streak putus diam-diam. Fix: streak dihitung langsung dari semua logs, day key UTC (`toISOString().slice(0,10)`), grace hari ini tetap. Badge threshold 3/5/7 (Starter/Rising/Dedicated/Elite) bekerja reaktif dari streak.
 - **ADR-057**: Fix audio tidak tersimpan dari Shadowing Mode — shadowing hanya pakai SpeechRecognition (transcript + score, ADR-027), tak pernah menghasilkan blob audio → log tersimpan tanpa audio. Fix: MediaRecorder paralel saat shadowing aktif (refs `shadowRecorderRef`/`shadowChunksRef`), hasil blob webm masuk state `audioBlob` yang sama dengan rekaman utama → ter-upload ke R2 + muncul di Saved Records. Stop otomatis di `onend`/`onerror` SpeechRecognition dan toggle manual.
+- **ADR-058**: [Offline-First PWA Architecture](docs/adr/0058-offline-first-pwa.md) — arsitektur offline-first dengan Dexie.js (IndexedDB), vite-plugin-pwa (service worker + manifest), client-push sync protocol (`POST /api/sync` + idempotency key), last-write-wins conflict resolution. Offline mode opt-in via Settings toggle, progressive hydration per-page, audio blob di tabel terpisah, apiFetch interceptor untuk read-through cache + write queue. Vitest (fake-indexeddb) + Playwright E2E testing.
 
 ## 🎨 Design System & UI Updates
 
@@ -79,19 +80,34 @@
 
 ## 📊 New Features Implemented (Sesi Ini)
 
-1. **Interactive Product Landing Page:** Menambahkan komponen [`LandingPage.tsx`](file:///Users/muhfaridzia/Documents/personal/learn-english/frontend/src/components/LandingPage.tsx) bertema dark-tech emerald.
-2. **AI Personalized Daily Challenge:** Panel target latihan harian di Dashboard.
-3. **Vocabulary Distribution Chart:** Diagram batang horizontal dinamis di Dashboard.
-4. **TTS Voice Selector Customization:** Tombol Voice Settings di AI Coach.
-5. **Daily Alarm Scheduler (One-Shot):** Pengingat jam belajar harian.
-6. **Microphone Voice Recording Input (Speech-to-Text):** Tombol mic STT terintegrasi.
-7. **Achievements & Consistency Streaks:** Hari aktif latihan beruntun di Dashboard.
-8. **Fluid Page Transition Animation:** Animasi geser memudar via Framer Motion.
-9. **Production Serverless Deployment:** Deployment backend Hono ke Cloudflare Workers, database ke Turso Cloud, dan frontend React ke Vercel dengan setup CORS dinamis dan inisialisasi skema tabel.
+1. **Offline-First PWA — Full Vertical Slice** (Phases 0-6 complete):
+   - **Phase 0**: Test infrastructure (vitest, fake-indexeddb, jsdom, Playwright config)
+   - **Phase 1**: Backend migrations (`updated_at`, `client_uuid`, `deleted_at`) + `POST /api/sync` endpoint (LWW, idempotency, soft delete)
+   - **Phase 2**: Frontend Dexie schema (5 tables) + sync engine (coalesce, retry, triggers, backfill, store) + 20 unit tests
+   - **Phase 3**: `apiFetch` interceptor (read-through GET, write-queue POST/PUT/DELETE, write-through cache, online-only bypass)
+   - **Phase 4**: PWA shell (vite-plugin-pwa, CSP headers, manifest, SW generation via Workbox)
+   - **Phase 5**: UI indicators (`SyncBanner` + `SyncDot`) + Settings offline toggle + storage meter + clear data
+   - **Phase 6**: QuotaExceededError handling, bundle audit (1,028KB / 320KB gzip), E2E test file created
+
+   See [ADR-058](docs/adr/0058-offline-first-pwa.md) for full design. New files under `frontend/src/offline/`:
+   - `db/dexie.ts` — Dexie.js schema (logs, chunks, journals, audioBlobs, pendingSync)
+   - `sync/merge.ts` — coalesce mutations + merge server response
+   - `sync/retry.ts` — exponential backoff (1s → 60s cap, 10 max retries)
+   - `sync/engine.ts` — syncNow(), enqueueMutation(), enqueueAudio(), QuotaExceededError guards
+   - `sync/triggers.ts` — online/visibility/interval triggers (StrictMode-safe)
+   - `store.ts` — reactive offline store (localStorage + subscribe)
+   - `backfill.ts` — bulk backfill from server → Dexie
+   - `indicator.tsx` — SyncBanner (offline/pending/synced) + SyncDot (per-item status)
+
+2. **App Icon:** New SwaraLingo PWA icon (`frontend/public/icon.svg`) — sound wave motif in emerald gradient on dark background, ready for maskable icon generation via vite-plugin-pwa.
 
 ## 🐛 Known Issues & Technical Debts
 
 - None.
 
 ## 🎯 Next Immediate Steps
-- [ ] Menambahkan visualisasi waveform audio (waveform visualization) sederhana saat user memutar rekaman suara.
+- [x] ~~**Vertical slice: offline diary flow**~~ — Dexie schema + `apiFetch` interceptor + `POST /api/sync` endpoint + UI sync indicator. Single end-to-end path: write diary offline → reconnect → auto-sync. ✅ Complete (Phases 0-6).
+- [x] ~~**vite-plugin-pwa setup**~~ — service worker + manifest + CSP headers. App installable. ✅ Complete.
+- [ ] Expand offline coverage: chunks (SRS), journals, audio recordings (schema ready, just add route-map entries in sync endpoint).
+- [ ] Playwright E2E: offline diary → online sync (test file created at `frontend/e2e/offline-sync.spec.ts`, pending server setup for run).
+- [ ] Safari Partitioned cookie workaround (CHIPS not supported by Safari ITP) — host FE + API on same domain.
