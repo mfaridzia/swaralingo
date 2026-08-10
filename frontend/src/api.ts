@@ -270,4 +270,3 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     throw err;
   }
 }
-}
