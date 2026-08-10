@@ -24,8 +24,19 @@ interface SentenceChunk {
   category: string;
 }
 
+type TabName = 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' | 'journal';
+
+function getTabFromPath(pathname: string): TabName {
+  if (pathname.endsWith('/chunks')) return 'chunks';
+  if (pathname.endsWith('/stats')) return 'stats';
+  if (pathname.endsWith('/settings')) return 'settings';
+  if (pathname.endsWith('/simulator')) return 'simulator';
+  if (pathname.endsWith('/journal')) return 'journal';
+  return 'diary';
+}
+
 interface SavedRecordsProps {
-  activeTab: 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' | 'journal';
+  pathname: string;
   logs: { success: boolean; data: PracticeLog[] } | undefined;
   loadingLogs: boolean;
   chunks: { success: boolean; data: SentenceChunk[] } | undefined;
@@ -34,13 +45,14 @@ interface SavedRecordsProps {
 }
 
 export const SavedRecords: React.FC<SavedRecordsProps> = ({
-  activeTab,
+  pathname,
   logs,
   loadingLogs,
   chunks,
   loadingChunks,
   userId,
 }) => {
+  const activeTab = getTabFromPath(pathname);
   const [searchQuery, setSearchQuery] = useState('');
   const [transcribingLogId, setTranscribingLogId] = useState<number | null>(null);
   const [transcriptions, setTranscriptions] = useState<{ [logId: number]: string }>({});
