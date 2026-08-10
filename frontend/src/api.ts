@@ -16,6 +16,7 @@ export interface ApiFetchOptions extends RequestInit {
 
 export function clearAuth(): void {
   localStorage.removeItem('fluency_user');
+  localStorage.removeItem('swaralingo_token');
 }
 
 // Paths that must always go to network (never cache offline)
@@ -233,7 +234,20 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
 
   // --- Online path (or online-only endpoint, or offline mode disabled) ---
   try {
-    const res = await fetch(`${API_URL}${path}`, { ...fetchOptions, credentials: 'include' });
+    const token = localStorage.getItem('swaralingo_token');
+    const headers = {
+      ...(fetchOptions.headers || {}),
+    } as Record<string, string>;
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_URL}${path}`, { 
+      ...fetchOptions, 
+      headers,
+      credentials: 'include' 
+    });
 
     if (res.status === 401 && !skipAuthRedirect) {
       clearAuth();

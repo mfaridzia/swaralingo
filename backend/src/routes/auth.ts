@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { OAuth2Client } from 'google-auth-library';
 import db from '../database.js';
 import { authRateLimiter } from '../middleware/rateLimiter.js';
-import { requireAuth, setAuthCookie, clearAuthCookie } from '../middleware/auth.js';
+import { requireAuth, setAuthCookie, clearAuthCookie, signToken } from '../middleware/auth.js';
 import { getEnvVar } from '../config.js';
 
 const authRouter = new Hono();
@@ -99,7 +99,8 @@ authRouter.post('/google', authRateLimiter, async (c) => {
           user = { id: info.lastInsertRowid, name: mockName, email: mockEmail, target_language: 'English' };
         }
         await setAuthCookie(c, user.id);
-        return c.json({ success: true, data: user });
+        const token = await signToken(user.id);
+        return c.json({ success: true, data: user, token });
       }
       throw verifyErr;
     }
@@ -118,7 +119,8 @@ authRouter.post('/google', authRateLimiter, async (c) => {
     }
 
     await setAuthCookie(c, user.id);
-    return c.json({ success: true, data: user });
+    const token = await signToken(user.id);
+    return c.json({ success: true, data: user, token });
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     return c.json({ success: false, error: 'Failed to verify Google Sign-In: ' + error.message }, 500);
@@ -148,7 +150,8 @@ authRouter.post('/register', authRateLimiter, async (c) => {
       const info = await stmt.run(email, name, passwordHash);
 
       await setAuthCookie(c, Number(info.lastInsertRowid));
-      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English' } }, 201);
+      const token = await signToken(Number(info.lastInsertRowid));
+      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English' }, token }, 201);
     } catch (dbErr: any) {
       if (dbErr.message.includes('UNIQUE constraint failed')) {
         return c.json({ success: false, error: 'Email already registered' }, 400);
@@ -198,7 +201,8 @@ authRouter.post('/login', authRateLimiter, async (c) => {
     }
 
     await setAuthCookie(c, user.id);
-    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language } });
+    const token = await signToken(user.id);
+    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language }, token });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }

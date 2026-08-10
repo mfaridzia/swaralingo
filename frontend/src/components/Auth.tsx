@@ -52,6 +52,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         const resData = await res.json();
 
         if (res.ok && resData.success) {
+          if (resData.token) {
+            localStorage.setItem('swaralingo_token', resData.token);
+          }
           onLogin(resData.data);
         } else {
           setErrorMsg(resData.error || "Google Sign-In failed");
@@ -121,6 +124,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       const resData = await response.json();
 
       if (response.ok && resData.success) {
+        if (resData.token) {
+          localStorage.setItem('swaralingo_token', resData.token);
+        }
         onLogin(resData.data);
       } else {
         setErrorMsg(resData.error || "Autentikasi gagal. Silakan coba lagi.");
