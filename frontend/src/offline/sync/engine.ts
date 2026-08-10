@@ -115,9 +115,11 @@ export async function syncNow(): Promise<void> {
         await db.pendingSync.delete(mut.id!);
       } else if (failedClientIds.has(mut.clientId)) {
         const errorMsg = serverData.errors.find(e => e.clientId === mut.clientId)?.message || 'Unknown error';
-        // Unrecoverable errors: mark dead immediately (no retry)
+        // Unrecoverable errors: delete immediately (data is corrupt, no retry can fix)
         const isFatal = /NOT NULL|SQLITE_CONSTRAINT|no such column/i.test(errorMsg);
-        if (isFatal || isDead(mut.retries + 1)) {
+        if (isFatal) {
+          await db.pendingSync.delete(mut.id!);
+        } else if (isDead(mut.retries + 1)) {
           await db.pendingSync.update(mut.id!, { status: 'dead', lastError: errorMsg, retries: mut.retries + 1 });
         } else {
           await db.pendingSync.update(mut.id!, { status: 'failed', lastError: errorMsg, retries: mut.retries + 1 });

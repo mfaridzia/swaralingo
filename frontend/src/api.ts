@@ -136,13 +136,13 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   }
 
   // --- Offline mode: intercept POST/PUT/DELETE (always queue locally, sync pushes in background) ---
-  if (offlineMode && !isOnlineOnly && (fetchOptions.method || '').toUpperCase() !== 'GET' && path !== '/audio') {
-    const method = (fetchOptions.method || 'POST').toUpperCase();
+  const reqMethod = (fetchOptions.method || 'GET').toUpperCase();
+  if (offlineMode && !isOnlineOnly && (reqMethod === 'POST' || reqMethod === 'PUT' || reqMethod === 'DELETE') && path !== '/audio') {
     const body = fetchOptions.body ? JSON.parse(fetchOptions.body as string) : {};
     const table = getReadTable(path);
 
-    if (table && (method === 'POST' || method === 'PUT' || method === 'DELETE')) {
-      const operation = method === 'DELETE' ? 'delete' : method === 'PUT' ? 'update' : 'insert';
+    if (table) {
+      const operation = reqMethod === 'DELETE' ? 'delete' : reqMethod === 'PUT' ? 'update' : 'insert';
       await enqueueMutation(table, operation, body);
       return toJsonResponse(body);
     }

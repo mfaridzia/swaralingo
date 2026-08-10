@@ -2,8 +2,6 @@ import { syncNow } from './engine';
 import { isOnline, updateSyncState } from '../store';
 import { db } from '../db/dexie';
 
-const AUTO_CLEANUP_DONE_KEY = '__swaralingo_cleanup_v1';
-
 let triggersInitialized = false;
 
 /**
@@ -14,15 +12,23 @@ export function initSyncTriggers(): void {
   if (triggersInitialized || typeof window === 'undefined') return;
   triggersInitialized = true;
 
-  // One-time cleanup: remove dead mutations from previous versions
-  if (!sessionStorage.getItem(AUTO_CLEANUP_DONE_KEY)) {
-    sessionStorage.setItem(AUTO_CLEANUP_DONE_KEY, '1');
-    db.pendingSync.where('status').equals('dead').delete().then(() => {
-      db.pendingSync.where('status').anyOf(['pending', 'failed']).count().then(n => {
-        updateSyncState(n, null);
-      });
+  // Cleanup on every init: remove dead + corrupted mutations from buggy versions
+  db.pendingSync.where('status').equals('dead').delete();
+  db.pendingSync.toArray().then(all => {
+    const corrupted = all.filter(m => {
+      const d = m.data || {};
+      // Logs need user_input/ai_feedback/improved_version, chunks need phrase, journals need content
+      if (m.table === 'logs') return !(d.user_input || d.userInput);
+      if (m.table === 'chunks') return !d.phrase;
+      if (m.table === 'journals') return !d.content;
+      return false;
     });
-  }
+    return Promise.all(corrupted.map(m => db.pendingSync.delete(m.id!)));
+  }).then(() => {
+    db.pendingSync.where('status').anyOf(['pending', 'failed']).count().then(n => {
+      updateSyncState(n, null);
+    });
+  });
 
   // Online: sync when connectivity returns
   window.addEventListener('online', () => {
