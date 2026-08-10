@@ -144,12 +144,11 @@ function MainAppLayout({
   }, [queryClient, activeUser.id]);
 
   // Determine active tab class visually in Navbar based on current URL path
-  const getActiveTab = (): 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' | 'journal' => {
-    if (location.pathname.endsWith('/chunks')) return 'chunks';
-    if (location.pathname.endsWith('/stats')) return 'stats';
-    if (location.pathname.endsWith('/settings')) return 'settings';
-    if (location.pathname.endsWith('/simulator')) return 'simulator';
-    if (location.pathname.endsWith('/journal')) return 'journal';
+  const getActiveTab = (): 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' => {
+    if (location.pathname === '/dashboard/chunks') return 'chunks';
+    if (location.pathname === '/dashboard/stats') return 'stats';
+    if (location.pathname === '/dashboard/settings') return 'settings';
+    if (location.pathname === '/dashboard/simulator') return 'simulator';
     return 'diary';
   };
 
@@ -403,7 +402,7 @@ function MainAppLayout({
         </div>
 
         <SavedRecords
-          pathname={location.pathname}
+          activeTab={activeTab}
           logs={logs}
           loadingLogs={loadingLogs}
           chunks={chunks}
