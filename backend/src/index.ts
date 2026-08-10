@@ -29,6 +29,21 @@ const app = new Hono();
 
 app.use('*', contextStorage());
 
+let isDbInitialized = false;
+
+app.use('*', async (c, next) => {
+  if (!isDbInitialized && !isBunRuntime) {
+    try {
+      await initDB();
+      isDbInitialized = true;
+      console.log('[Auto-Migration] Database verified/initialized on first request.');
+    } catch (err: any) {
+      console.error('[Auto-Migration] Failed to initialize database:', err.message);
+    }
+  }
+  await next();
+});
+
 app.get('/api/init-db', async (c) => {
   try {
     await initDB();
