@@ -129,7 +129,8 @@ export const JournalCoach: React.FC = () => {
     });
   };
 
-  const getMoodColor = (mood: string) => {
+  const getMoodColor = (mood: string | undefined | null) => {
+    if (!mood) return 'bg-[#27272a]/60 text-[#a1a1aa] border-[#27272a]';
     const moodLower = mood.toLowerCase();
     if (moodLower.includes('stressed') || moodLower.includes('anxious')) return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
     if (moodLower.includes('tired') || moodLower.includes('exhausted')) return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
@@ -138,7 +139,8 @@ export const JournalCoach: React.FC = () => {
     return 'bg-[#27272a]/60 text-[#a1a1aa] border-[#27272a]';
   };
 
-  const getMoodEmoji = (mood: string) => {
+  const getMoodEmoji = (mood: string | undefined | null) => {
+    if (!mood) return '😐';
     const moodLower = mood.toLowerCase();
     if (moodLower.includes('stressed')) return '😰';
     if (moodLower.includes('anxious')) return '😟';
@@ -263,14 +265,22 @@ export const JournalCoach: React.FC = () => {
               <Sparkles className="h-3 w-3" />
               Latest Reflection Result
             </span>
-            <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${getMoodColor(submitJournalMutation.data.data.mood)}`}>
-              Mood: {getMoodEmoji(submitJournalMutation.data.data.mood)} {submitJournalMutation.data.data.mood}
-            </span>
+            {submitJournalMutation.data.data.mood ? (
+              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${getMoodColor(submitJournalMutation.data.data.mood)}`}>
+                Mood: {getMoodEmoji(submitJournalMutation.data.data.mood)} {submitJournalMutation.data.data.mood}
+              </span>
+            ) : (
+              <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/20">
+                Pending Sync
+              </span>
+            )}
           </div>
           <div className="space-y-1">
             <span className="text-[9px] uppercase font-extrabold tracking-wider text-[#a1a1aa] block">AI Coach Response:</span>
             <p className="text-xs text-white leading-relaxed font-semibold italic">
-              "{submitJournalMutation.data.data.ai_reflection}"
+              {submitJournalMutation.data.data.ai_reflection
+                ? `"${submitJournalMutation.data.data.ai_reflection}"`
+                : 'Saved offline — AI reflection will appear after sync.'}
             </p>
           </div>
         </div>

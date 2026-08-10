@@ -173,7 +173,13 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
           if (body.easiness == null) body.easiness = 2.5;
         }
       }
-      await enqueueMutation(table, operation, body);
+      const clientId = await enqueueMutation(table, operation, body);
+      // Read back full record from Dexie (body alone is incomplete — missing server-only fields like mood)
+      const dexieTable = table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals;
+      const record = await dexieTable.where('clientId').equals(clientId).first();
+      if (record) {
+        return toJsonResponse(dexieToApiLogs([record])[0]);
+      }
       return toJsonResponse(body);
     }
   }
