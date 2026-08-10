@@ -17,7 +17,6 @@ export function initSyncTriggers(): void {
   db.pendingSync.toArray().then(all => {
     const corrupted = all.filter(m => {
       const d = m.data || {};
-      // Logs need user_input/ai_feedback/improved_version, chunks need phrase, journals need content
       if (m.table === 'logs') return !(d.user_input || d.userInput) || !(d.created_at || d.createdAt);
       if (m.table === 'chunks') return !d.phrase || !(d.created_at || d.createdAt);
       if (m.table === 'journals') return !d.content || !(d.created_at || d.createdAt);
@@ -29,6 +28,11 @@ export function initSyncTriggers(): void {
       updateSyncState(n, null);
     });
   });
+
+  // Clean corrupt records from local tables (empty user_input/ai_feedback from old interceptor bugs)
+  db.logs.filter(r => !r.user_input && !(r as any).userInput).delete();
+  db.chunks.filter(r => !r.phrase).delete();
+  db.journals.filter(r => !r.content).delete();
 
   // Online: sync when connectivity returns
   window.addEventListener('online', () => {
