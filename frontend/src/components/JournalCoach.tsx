@@ -89,27 +89,12 @@ export const JournalCoach: React.FC = () => {
     }
   };
 
-  const submitJournalMutation = useMutation({
-    mutationFn: (newEntry: { userId: number; prompt: string | null; content: string; targetLanguage: string }) => {
-      return apiFetch('/journals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newEntry),
-      }).then(res => res.json());
-    },
-    onSuccess: (resData) => {
-      if (resData.success) {
-        queryClient.invalidateQueries({ queryKey: ['journals', userId] });
-        setJournalContent("");
-        // Prompt sudah dijawab → buang cache, generate prompt baru (sekali saja, bukan tiap refresh)
-        localStorage.removeItem(PROMPT_CACHE_KEY);
-        fetchPrompt();
-      } else {
-        alert(resData.error || "Failed to save journal entry.");
-      }
-    }
-  });
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamedMood, setStreamedMood] = useState("");
+  const [streamedReflection, setStreamedReflection] = useState("");
+  const [finalResult, setFinalResult] = useState<JournalEntry | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
     if (journalContent.trim().length < 5) {
@@ -121,12 +106,91 @@ export const JournalCoach: React.FC = () => {
     const user = savedUser ? JSON.parse(savedUser) : null;
     const targetLanguage = user?.target_language || 'English';
 
-    submitJournalMutation.mutate({
-      userId,
-      prompt: isPromptedMode ? currentPrompt : null,
-      content: journalContent,
-      targetLanguage
-    });
+    setIsStreaming(true);
+    setStreamedMood("");
+    setStreamedReflection("");
+    setFinalResult(null);
+
+    try {
+      const newEntry = {
+        userId,
+        prompt: isPromptedMode ? currentPrompt : null,
+        content: journalContent,
+        targetLanguage,
+        clientUuid: crypto.randomUUID()
+      };
+
+      const response = await apiFetch('/journals/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEntry),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to save journal entry.");
+      }
+
+      if (!response.body) {
+        throw new Error("No response stream body received.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let partialChunk = '';
+      let currentEvent = 'message';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        partialChunk += decoder.decode(value, { stream: true });
+        const lines = partialChunk.split('\n');
+        partialChunk = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          if (trimmed.startsWith('event:')) {
+            currentEvent = trimmed.substring(6).trim();
+          } else if (trimmed.startsWith('data:')) {
+            const dataVal = trimmed.substring(5).trim();
+            if (currentEvent === 'mood') {
+              setStreamedMood(dataVal);
+            } else if (currentEvent === 'reflection') {
+              setStreamedReflection(prev => prev + dataVal);
+            } else if (currentEvent === 'done') {
+              try {
+                const finalData = JSON.parse(dataVal) as JournalEntry;
+                setFinalResult(finalData);
+                setJournalContent("");
+                // Instantly update query state
+                queryClient.setQueryData(['journals', userId], (old: any) => {
+                  const existing = old?.data || [];
+                  return {
+                    ...old,
+                    data: [finalData, ...existing]
+                  };
+                });
+                queryClient.invalidateQueries({ queryKey: ['journals', userId] });
+                // Reset cached prompt and fetch new one
+                localStorage.removeItem(PROMPT_CACHE_KEY);
+                fetchPrompt();
+              } catch (parseErr) {
+                console.error("Failed to parse final data:", parseErr);
+              }
+            } else if (currentEvent === 'error') {
+              throw new Error(dataVal);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      alert(error.message || "Failed to save journal entry.");
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   const getMoodColor = (mood: string | undefined | null) => {
@@ -238,13 +302,13 @@ export const JournalCoach: React.FC = () => {
             </span>
             <button
               type="submit"
-              disabled={submitJournalMutation.isPending || journalContent.trim().length < 5}
+              disabled={isStreaming || journalContent.trim().length < 5}
               className="premium-btn-hover bg-[#22c55e] hover:bg-[#4ade80] disabled:bg-[#27272a] disabled:text-[#52525b] disabled:opacity-50 text-black text-[10px] uppercase font-bold tracking-wider px-6 py-3 rounded-xl flex items-center gap-2 transition-all cursor-pointer"
             >
-              {submitJournalMutation.isPending ? (
+              {isStreaming ? (
                 <>
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  Analyzing Mood...
+                  Analyzing Mood & Reflection...
                 </>
               ) : (
                 <>
@@ -257,30 +321,32 @@ export const JournalCoach: React.FC = () => {
         </form>
       </div>
 
-      {/* Latest Saved AI Reflection Highlight */}
-      {submitJournalMutation.data?.success && (
+      {/* Latest Saved AI Reflection Highlight / Streaming status */}
+      {(isStreaming || finalResult) && (
         <div className="glass-panel p-5 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-[#121214]/60 to-emerald-500/5 space-y-3">
-          <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
+          <div className="flex items-center justify-between border-b border-[#27272a]/60 pb-2">
             <span className="text-[9px] uppercase font-extrabold tracking-wider text-emerald-500 flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
               Latest Reflection Result
             </span>
-            {submitJournalMutation.data.data.mood ? (
-              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${getMoodColor(submitJournalMutation.data.data.mood)}`}>
-                Mood: {getMoodEmoji(submitJournalMutation.data.data.mood)} {submitJournalMutation.data.data.mood}
+            {(streamedMood || finalResult?.mood) ? (
+              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${getMoodColor(streamedMood || finalResult?.mood)}`}>
+                Mood: {getMoodEmoji(streamedMood || finalResult?.mood)} {streamedMood || finalResult?.mood}
               </span>
             ) : (
-              <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/20">
-                Pending Sync
+              <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse">
+                Analyzing Mood...
               </span>
             )}
           </div>
           <div className="space-y-1">
             <span className="text-[9px] uppercase font-extrabold tracking-wider text-[#a1a1aa] block">AI Coach Response:</span>
             <p className="text-xs text-white leading-relaxed font-semibold italic">
-              {submitJournalMutation.data.data.ai_reflection
-                ? `"${submitJournalMutation.data.data.ai_reflection}"`
-                : 'Saved offline — AI reflection will appear after sync.'}
+              {streamedReflection || finalResult?.ai_reflection ? (
+                `"${streamedReflection || finalResult?.ai_reflection}"`
+              ) : (
+                <span className="animate-pulse text-[#52525b]">AI coach is writing reflection...</span>
+              )}
             </p>
           </div>
         </div>

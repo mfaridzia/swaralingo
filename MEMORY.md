@@ -117,3 +117,16 @@
 - [ ] Expand offline coverage: chunks (SRS), journals, audio recordings (schema ready, just add route-map entries in sync endpoint).
 - [ ] Playwright E2E: offline diary → online sync (test file created at `frontend/e2e/offline-sync.spec.ts`, pending server setup for run).
 - [ ] Safari Partitioned cookie workaround (CHIPS not supported by Safari ITP) — host FE + API on same domain.
+
+## 🔮 Future Backlog (Real-Time SSE & WebSockets)
+
+1. **AI Speech/Text Streaming (SSE - Server-Sent Events)**:
+   - Stream AI recruiter Evelyn's questions and feedback word-by-word in real-time in the AI Interview Simulator.
+   - Stream AI Journaling Coach reflections word-by-word in real-time in the Journal Coach. *(Currently in progress: Use Case 1)*
+2. **Live Pronunciation Feedback (WebSockets)**:
+   - Stream microphone audio chunks in real-time to the server for live CC subtitle generation and instant word-by-word pronunciation confidence scoring in Shadowing Mode.
+3. **AI Interviewer Evelyn "Real-time Interruption" (WebSockets)**:
+   - Implement real-time voice call simulation with immediate sound interruption detection using WebSockets.
+4. **Multiplayer "Speaking Duel" Peer Practice (WebSockets)**:
+   - Real-time matchmaking and pairing of Indonesian speakers to perform collaborative job interview or daily-life roleplay with background AI scoring.
+

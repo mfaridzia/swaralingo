@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { streamSSE } from 'hono/streaming';
 import db from '../database.js';
 import { getEnvVar } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -154,6 +155,131 @@ Format your output strictly as a JSON object with these two fields:
         mood: detectedMood,
         ai_reflection: aiReflection,
         created_at: new Date().toISOString()
+      }
+    });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// POST: Submit journal entry and stream the AI reflection and mood via SSE
+journalsRouter.post('/stream', async (c) => {
+  try {
+    const body = await c.req.json();
+    const result = journalSubmitSchema.safeParse(body);
+    if (!result.success) {
+      return c.json({ success: false, error: 'Content must be at least 5 characters.' }, 400);
+    }
+
+    const userId = c.get('authUserId');
+    const { prompt = null, content, targetLanguage = 'English', clientUuid = null } = result.data;
+    const nowMs = Date.now();
+
+    const apiKey = getEnvVar('GEMINI_API_KEY');
+    if (!apiKey) {
+      return c.json({ success: false, error: 'Gemini API Key is missing.' }, 500);
+    }
+
+    if (clientUuid) {
+      const existing = await db.query(
+        'SELECT * FROM journals WHERE client_uuid = ?'
+      ).get(clientUuid) as any | undefined;
+      if (existing) {
+        return c.json({
+          success: true,
+          data: existing
+        });
+      }
+    }
+
+    return streamSSE(c, async (stream) => {
+      let detectedMood = 'Neutral';
+      let aiReflection = '';
+
+      // Step A: Classify mood quickly (non-streaming, fast)
+      try {
+        const moodPrompt = `Analyze the user's journal entry written in ${targetLanguage}.
+Determine their primary mood or emotional tone. Categorize it as exactly one of these: "Stressed", "Tired", "Proud", "Optimistic", "Exhausted", "Happy", "Inspired", "Anxious", "Confused", or "Neutral".
+Return ONLY the single mood name word, nothing else.`;
+
+        const moodModel = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
+        const moodResponse = await moodModel.generateContent([
+          { text: moodPrompt },
+          { text: `User Journal Entry:\n"${content}"` }
+        ]);
+
+        detectedMood = moodResponse.response.text().trim().replace(/["']/g, '');
+        const validMoods = ["Stressed", "Tired", "Proud", "Optimistic", "Exhausted", "Happy", "Inspired", "Anxious", "Confused", "Neutral"];
+        if (!validMoods.includes(detectedMood)) {
+          detectedMood = 'Neutral';
+        }
+
+        await stream.writeSSE({
+          event: 'mood',
+          data: detectedMood
+        });
+      } catch (err) {
+        console.error('Gemini Journal Mood Error:', err);
+        await stream.writeSSE({
+          event: 'mood',
+          data: 'Neutral'
+        });
+      }
+
+      // Step B: Stream AI reflection response
+      try {
+        const systemPrompt = `You are a warm, empathetic AI Journaling Coach.
+Analyze the user's journal entry written in ${targetLanguage}. 
+Provide a warm, supportive, and motivating response in ${targetLanguage} reflecting on what they wrote. Keep it friendly and concise (exactly 2-3 sentences). Do not wrap in JSON, just return plain text.`;
+
+        const model = getAiClient().getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
+        const gStream = await model.generateContentStream([
+          { text: systemPrompt },
+          { text: `User Journal Entry:\n"${content}"` }
+        ]);
+
+        for await (const chunk of gStream.stream) {
+          const chunkText = chunk.text();
+          aiReflection += chunkText;
+          await stream.writeSSE({
+            event: 'reflection',
+            data: chunkText
+          });
+        }
+      } catch (err: any) {
+        console.error('Gemini Stream Error:', err);
+        aiReflection = 'Thank you for sharing your thoughts today. Keep practicing and journaling!';
+        await stream.writeSSE({
+          event: 'reflection',
+          data: aiReflection
+        });
+      }
+
+      // Step C: Save entry in DB and send final details
+      try {
+        const stmt = db.prepare(
+          'INSERT INTO journals (user_id, prompt, content, mood, ai_reflection, client_uuid, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+        const info = await stmt.run(userId, prompt, content, detectedMood, aiReflection, clientUuid, nowMs);
+
+        await stream.writeSSE({
+          event: 'done',
+          data: JSON.stringify({
+            id: info.lastInsertRowid,
+            user_id: userId,
+            prompt,
+            content,
+            mood: detectedMood,
+            ai_reflection: aiReflection,
+            created_at: new Date(nowMs).toISOString()
+          })
+        });
+      } catch (dbErr: any) {
+        console.error('Database Save Error in stream:', dbErr);
+        await stream.writeSSE({
+          event: 'error',
+          data: dbErr.message
+        });
       }
     });
   } catch (error: any) {
