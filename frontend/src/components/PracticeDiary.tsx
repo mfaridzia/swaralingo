@@ -51,6 +51,8 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
   
   // Audio recording references and state (Blob dikirim langsung, tanpa konversi base64)
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const shadowRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const shadowChunksRef = React.useRef<Blob[]>([]);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
   // Text-to-speech voice customization states
@@ -245,6 +247,42 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
     }
   };
 
+  // Rekam audio paralel saat shadowing (STT + MediaRecorder sekaligus)
+  // — sebelumnya shadowing cuma SpeechRecognition (transcript+score), audio tak pernah tersimpan.
+  const startShadowAudioRecording = () => {
+    setAudioBlob(null);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const recorder = new MediaRecorder(stream);
+        shadowChunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            shadowChunksRef.current.push(e.data);
+          }
+        };
+
+        recorder.onstop = () => {
+          const blob = new Blob(shadowChunksRef.current, { type: 'audio/webm' });
+          if (blob.size > 0) setAudioBlob(blob);
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        recorder.start();
+        shadowRecorderRef.current = recorder;
+      }).catch(err => {
+        console.warn("Could not start shadow audio recording:", err);
+      });
+    }
+  };
+
+  const stopShadowAudioRecording = () => {
+    if (shadowRecorderRef.current) {
+      shadowRecorderRef.current.stop();
+      shadowRecorderRef.current = null;
+    }
+  };
+
   // Shadowing Microphone Recording
   const handleToggleShadowRecording = () => {
     const BrowserWin = window as unknown as IWindow;
@@ -257,11 +295,13 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
 
     if (isShadowRecording) {
       setIsShadowRecording(false);
+      stopShadowAudioRecording();
     } else {
       setShadowTranscript('');
       setShadowScore(null);
       setShadowWords([]);
       setIsShadowRecording(true);
+      startShadowAudioRecording();
 
       const shadowRec = new SpeechRecognition();
       shadowRec.continuous = false;
@@ -272,10 +312,12 @@ export const PracticeDiary: React.FC<PracticeDiaryProps> = ({
       shadowRec.onerror = (e: any) => {
         console.error(e);
         setIsShadowRecording(false);
+        stopShadowAudioRecording();
       };
-      
+
       shadowRec.onend = () => {
         setIsShadowRecording(false);
+        stopShadowAudioRecording();
       };
 
       shadowRec.onresult = (event: any) => {
