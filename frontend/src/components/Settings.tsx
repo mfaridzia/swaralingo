@@ -68,10 +68,8 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
     return localStorage.getItem(`alarm_time_${user.id}`) || '19:00';
   });
 
-  // Offline mode states
-  const [offlineModeEnabled, setOfflineModeEnabled] = useState(() => {
-    return localStorage.getItem('swaralingo_offline_enabled') === 'true';
-  });
+  // Offline mode states (Temporarily disabled)
+  const [offlineModeEnabled, setOfflineModeEnabled] = useState(false);
   const [storageEstimate, setStorageEstimate] = useState<{ usage: number; quota: number } | null>(null);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -458,19 +456,15 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
         <div className="glass-panel space-y-6 rounded-2xl p-6">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Offline Mode</h3>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Offline Mode <span className="text-xs text-yellow-500 font-semibold">(Temporarily Disabled)</span></h3>
               <p className="text-xs text-[#a1a1aa]">Save diary entries locally when offline and sync automatically when back online.</p>
             </div>
             <button
               type="button"
-              onClick={toggleOfflineMode}
-              className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                offlineModeEnabled
-                  ? 'bg-[#22c55e]/15 border-[#22c55e]/30 text-[#22c55e]'
-                  : 'bg-[#18181b] border-[#27272a] text-[#a1a1aa]'
-              }`}
+              disabled
+              className="p-2.5 rounded-xl border bg-[#18181b] border-[#27272a] text-[#71717a] cursor-not-allowed"
             >
-              {offlineModeEnabled ? <Wifi className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}
+              <WifiOff className="h-5 w-5" />
             </button>
           </div>
 

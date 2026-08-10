@@ -15,7 +15,7 @@ function notify() {
 
 export function getOfflineStore(): OfflineStore {
   return {
-    offlineModeEnabled: localStorage.getItem('swaralingo_offline_enabled') === 'true',
+    offlineModeEnabled: false, // Temporarily disabled by default
     lastSyncedAt: Number(localStorage.getItem('swaralingo_last_sync')) || null,
     pendingCount: Number(localStorage.getItem('swaralingo_pending_count')) || 0,
     lastError: localStorage.getItem('swaralingo_last_error') || null,
