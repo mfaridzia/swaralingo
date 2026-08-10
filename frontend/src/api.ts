@@ -1,7 +1,7 @@
 import { API_URL } from './config';
 import { db } from './offline/db/dexie';
-import { enqueueMutation, enqueueAudio as _enqueueAudio } from './offline/sync/engine';
-import { getOfflineStore, isOnline } from './offline/store';
+import { enqueueMutation } from './offline/sync/engine';
+import { getOfflineStore } from './offline/store';
 
 // Session auth via HttpOnly cookie (SameSite=None; Secure; Partitioned) — XSS tidak bisa baca token.
 // credentials: 'include' agar cookie terkirim cross-site (vercel.app → workers.dev).
@@ -140,12 +140,12 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
 // Offline-first: GET serves from Dexie, POST queues mutations, when offline mode enabled.
 export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
   const { skipAuthRedirect = false, ...fetchOptions } = options;
-  const offline = !isOnline();
   const offlineMode = getOfflineStore().offlineModeEnabled;
   const isOnlineOnly = shouldBypassInterceptor(path);
 
-  // --- Offline mode: intercept GET (read from Dexie when actually offline) ---
-  if (offline && offlineMode && !isOnlineOnly && (fetchOptions.method || 'GET') === 'GET') {
+  // --- Offline mode: intercept GET (always read from Dexie, even when browser online) ---
+  // React Query refetch would hit server without offline entry → cache overwritten.
+  if (offlineMode && !isOnlineOnly && (fetchOptions.method || 'GET') === 'GET') {
     const table = getReadTable(path);
     if (table) {
       const records = await (table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals)

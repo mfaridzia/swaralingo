@@ -101,13 +101,16 @@ export async function syncNow(): Promise<void> {
     const { resolvedClientIds, failedClientIds, conflictClientIds } = mergeServerResponse(serverData);
 
     // Update local Dexie: mark resolved rows as synced, update serverIds
+    const modifyOps: Promise<any>[] = [];
     for (const s of serverData.synced) {
       if (s.serverId > 0) {
-        // Map client tables to Dexie tables
         const dexieTable = s.table === 'logs' ? db.logs : s.table === 'chunks' ? db.chunks : db.journals;
-        (dexieTable.where('clientId').equals(s.clientId) as any).modify({ serverId: s.serverId, synced: true });
+        modifyOps.push(
+          (dexieTable.where('clientId').equals(s.clientId) as any).modify({ serverId: s.serverId, synced: true })
+        );
       }
     }
+    await Promise.all(modifyOps);
 
     // Remove resolved and dead-letter mutations from pendingSync
     for (const mut of pending) {
