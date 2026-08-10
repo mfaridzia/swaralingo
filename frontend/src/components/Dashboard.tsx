@@ -144,21 +144,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // Calculate consistency streaks
+  // Calculate consistency streaks — langsung dari semua logs (bukan chartData 7/30d,
+  // yang memotong streak panjang). created_at DB = CURRENT_TIMESTAMP (UTC), jadi
+  // perbandingan pakai toISOString UTC — konsisten lintas timezone user.
   const calculateStreak = (): number => {
-    if (!chartData || chartData.length === 0) return 0;
-    const sortedData = [...chartData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
+    const logs = logsData?.data || [];
+    if (!logs.length) return 0;
+
+    const activeDays = new Set(logs.map(l => String(l.created_at).slice(0, 10))); // "2026-08-10"
+
     let streak = 0;
-    for (const day of sortedData) {
-      if (day.count > 0) {
+    const now = new Date();
+    for (let offset = 0; offset < 366; offset++) {
+      const day = new Date(now.getTime() - offset * 86400000);
+      const dayKey = day.toISOString().slice(0, 10);
+      if (activeDays.has(dayKey)) {
         streak++;
-      } else {
-        const isToday = new Date(day.date).toDateString() === new Date().toDateString();
-        if (streak > 0 && !isToday) {
-          break;
-        }
+        continue;
       }
+      if (offset === 0) continue; // hari ini belum latihan → grace, streak tidak putus
+      break;
     }
     return streak;
   };
