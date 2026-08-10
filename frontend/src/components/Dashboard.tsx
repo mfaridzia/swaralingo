@@ -506,146 +506,52 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Category Distribution Analysis Section (Bar Chart) */}
-          <div className="glass-panel rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-2 border-b border-[#27272a]/60 pb-3">
-              <PieChart className="h-4.5 w-4.5" style={{ color: badge.color }} />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Vocabulary Distribution by Category</h3>
-            </div>
-            
-            {categoryStats.length > 0 ? (
-              <div className="space-y-4">
-                {categoryStats.map((cat, idx) => {
-                  const colors = ['#22c55e', '#60a5fa', '#c084fc', '#fb923c', '#f43f5e'];
-                  const barColor = colors[idx % colors.length];
-
-                  return (
-                    <div key={cat.name} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold">
-                        <span className="text-[#f4f4f5]">{cat.name}</span>
-                        <span className="text-[#a1a1aa] font-mono">{cat.count} phrases ({cat.percentage}%)</span>
-                      </div>
-                      <div className="h-2 w-full bg-[#121214] rounded-full overflow-hidden border border-[#27272a]">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500 ease-out" 
-                          style={{ 
-                            width: `${cat.percentage}%`, 
-                            backgroundColor: barColor 
-                          }} 
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-4 text-xs text-[#52525b]">
-                No vocabulary categories found. Add new sentence chunks to populate the chart.
-              </div>
-            )}
-          </div>
-
-          {/* SVG Custom Charts Box */}
-          <div className="glass-panel rounded-2xl p-6 space-y-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-base font-bold text-white">{range === '30d' ? 'Monthly Progress Analytics' : 'Weekly Progress Analytics'}</h3>
-                <p className="text-[11px] text-[#a1a1aa]">Hover on points/bars for exact daily scores</p>
-              </div>
-              {hoveredDataPoint && (
-                <div className="flex items-center gap-4 text-xs bg-[#121214] border border-[#27272a] px-3 py-1.5 rounded-lg">
-                  <span style={{ color: '#22c55e' }}>Score: {hoveredDataPoint.fluencyScore}%</span>
-                  <span className="text-[#a1a1aa]">Count: {hoveredDataPoint.count} phrases</span>
+          {/* Charts Row (Weekly Progress & Category Distribution side-by-side) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* SVG Custom Charts Box */}
+            <div className="glass-panel rounded-2xl p-6 space-y-8">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-white">{range === '30d' ? 'Monthly Progress Analytics' : 'Weekly Progress Analytics'}</h3>
+                  <p className="text-[11px] text-[#a1a1aa]">Hover on points/bars for exact daily scores</p>
                 </div>
-              )}
-            </div>
-
-            {chartData.length > 0 ? (
-              <div className="flex flex-col gap-8">
-                {/* 1. Fluency Progress Line Graph */}
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#a1a1aa]">Fluency Growth Curve</span>
-                  <div className="relative w-full overflow-x-auto">
-                    <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto overflow-visible">
-                      {[0, 25, 50, 75, 100].map((val) => {
-                        const yPos = chartHeight - (val / 100) * (chartHeight - 40) - 20;
-                        return (
-                          <g key={val}>
-                            <line x1="40" y1={yPos} x2={chartWidth} y2={yPos} stroke="#27272a" strokeWidth="0.5" strokeDasharray="4 4" />
-                            <text x="10" y={yPos + 4} fill="#52525b" fontSize="9" fontWeight="500">{val}%</text>
-                          </g>
-                        );
-                      })}
-
-                      {(() => {
-                        const points = chartData.map((d, i) => {
-                          const x = 50 + i * ((chartWidth - 80) / (chartData.length - 1));
-                          const y = chartHeight - (d.fluencyScore / 100) * (chartHeight - 40) - 20;
-                          return { x, y };
-                        });
-                        
-                        const pathD = points.reduce((acc, p, i) => 
-                          i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`
-                        , '');
-
-                        const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - 20} L ${points[0].x} ${chartHeight - 20} Z`;
-
-                        const shouldShowLabel = (index: number) => {
-                          if (range === '7d') return true;
-                          return index % 5 === 0 || index === chartData.length - 1;
-                        };
-
-                        return (
-                          <g>
-                            <path d={areaD} fill="url(#emerald-gradient)" opacity="0.1" />
-                            <path d={pathD} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
-                            
-                            {points.map((p, i) => (
-                              <g key={i}>
-                                <circle 
-                                  cx={p.x} 
-                                  cy={p.y} 
-                                  r={range === '30d' ? "2.5" : "4"} 
-                                  fill="#09090b" 
-                                  stroke="#22c55e" 
-                                  strokeWidth="2" 
-                                  className="cursor-pointer transition-all duration-250 hover:r-6"
-                                  onMouseEnter={() => setHoveredDataPoint(chartData[i])}
-                                  onMouseLeave={() => setHoveredDataPoint(null)}
-                                />
-                                {shouldShowLabel(i) && (
-                                  <text x={p.x} y={chartHeight - 2} fill="#52525b" fontSize="8" textAnchor="middle">
-                                    {new Date(chartData[i].date).getDate()}
-                                  </text>
-                                )}
-                              </g>
-                            ))}
-                          </g>
-                        );
-                      })()}
-
-                      <defs>
-                        <linearGradient id="emerald-gradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#22c55e" />
-                          <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
+                {hoveredDataPoint && (
+                  <div className="flex items-center gap-4 text-xs bg-[#121214] border border-[#27272a] px-3 py-1.5 rounded-lg">
+                    <span style={{ color: '#22c55e' }}>Score: {hoveredDataPoint.fluencyScore}%</span>
+                    <span className="text-[#a1a1aa]">Count: {hoveredDataPoint.count} phrases</span>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* 2. Submissions Bar Graph */}
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#a1a1aa]">Daily Activity Frequency</span>
-                  <div className="relative w-full overflow-x-auto">
-                    <svg viewBox={`0 0 ${chartWidth} ${chartHeight - 20}`} className="w-full h-auto overflow-visible">
-                      {(() => {
-                        const maxCount = Math.max(...chartData.map(d => d.count), 4);
-                        return chartData.map((d, i) => {
-                          const x = 40 + i * ((chartWidth - 80) / (chartData.length - 1)) + 10;
-                          const barHeight = (d.count / maxCount) * (chartHeight - 60);
-                          const y = (chartHeight - 40) - barHeight;
-                          const barWidth = range === '30d' ? 6 : 24;
+              {chartData.length > 0 ? (
+                <div className="flex flex-col gap-8">
+                  {/* 1. Fluency Progress Line Graph */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#a1a1aa]">Fluency Growth Curve</span>
+                    <div className="relative w-full overflow-x-auto">
+                      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto overflow-visible">
+                        {[0, 25, 50, 75, 100].map((val) => {
+                          const yPos = chartHeight - (val / 100) * (chartHeight - 40) - 20;
+                          return (
+                            <g key={val}>
+                              <line x1="40" y1={yPos} x2={chartWidth} y2={yPos} stroke="#27272a" strokeWidth="0.5" strokeDasharray="4 4" />
+                              <text x="10" y={yPos + 4} fill="#52525b" fontSize="9" fontWeight="500">{val}%</text>
+                            </g>
+                          );
+                        })}
+
+                        {(() => {
+                          const points = chartData.map((d, i) => {
+                            const x = 50 + i * ((chartWidth - 80) / (chartData.length - 1));
+                            const y = chartHeight - (d.fluencyScore / 100) * (chartHeight - 40) - 20;
+                            return { x, y };
+                          });
+                          
+                          const pathD = points.reduce((acc, p, i) => 
+                            i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`
+                          , '');
+
+                          const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - 20} L ${points[0].x} ${chartHeight - 20} Z`;
 
                           const shouldShowLabel = (index: number) => {
                             if (range === '7d') return true;
@@ -653,45 +559,142 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           };
 
                           return (
-                            <g key={i}>
-                              <rect x={x - barWidth/2} y={0} width={barWidth} height={chartHeight - 40} fill="#121214" rx="1.5" />
-                              <rect 
-                                x={x - barWidth/2} 
-                                y={y} 
-                                width={barWidth} 
-                                height={barHeight} 
-                                fill="#22c55e" 
-                                opacity="0.85"
-                                rx="1.5"
-                                className="cursor-pointer transition-all duration-200 hover:opacity-100"
-                                onMouseEnter={() => setHoveredDataPoint(d)}
-                                onMouseLeave={() => setHoveredDataPoint(null)}
-                              />
-                              {d.count > 0 && range === '7d' && (
-                                <text x={x} y={y - 6} fill="#a1a1aa" fontSize="9" textAnchor="middle" fontWeight="bold">
-                                  {d.count}
-                                </text>
-                              )}
-                              {shouldShowLabel(i) && (
-                                <text x={x} y={chartHeight - 25} fill="#52525b" fontSize="8" textAnchor="middle">
-                                  {range === '30d' 
-                                    ? new Date(d.date).getDate()
-                                    : new Date(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}
-                                </text>
-                              )}
+                            <g>
+                              <path d={areaD} fill="url(#emerald-gradient)" opacity="0.1" />
+                              <path d={pathD} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" />
+                              
+                              {points.map((p, i) => (
+                                <g key={i}>
+                                  <circle 
+                                    cx={p.x} 
+                                    cy={p.y} 
+                                    r={range === '30d' ? "2.5" : "4"} 
+                                    fill="#09090b" 
+                                    stroke="#22c55e" 
+                                    strokeWidth="2" 
+                                    className="cursor-pointer transition-all duration-250 hover:r-6"
+                                    onMouseEnter={() => setHoveredDataPoint(chartData[i])}
+                                    onMouseLeave={() => setHoveredDataPoint(null)}
+                                  />
+                                  {shouldShowLabel(i) && (
+                                    <text x={p.x} y={chartHeight - 2} fill="#52525b" fontSize="8" textAnchor="middle">
+                                      {new Date(chartData[i].date).getDate()}
+                                    </text>
+                                  )}
+                                </g>
+                              ))}
                             </g>
                           );
-                        });
-                      })()}
-                    </svg>
+                        })()}
+
+                        <defs>
+                          <linearGradient id="emerald-gradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#22c55e" />
+                            <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* 2. Submissions Bar Graph */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#a1a1aa]">Daily Activity Frequency</span>
+                    <div className="relative w-full overflow-x-auto">
+                      <svg viewBox={`0 0 ${chartWidth} ${chartHeight - 20}`} className="w-full h-auto overflow-visible">
+                        {(() => {
+                          const maxCount = Math.max(...chartData.map(d => d.count), 4);
+                          return chartData.map((d, i) => {
+                            const x = 40 + i * ((chartWidth - 80) / (chartData.length - 1)) + 10;
+                            const barHeight = (d.count / maxCount) * (chartHeight - 60);
+                            const y = (chartHeight - 40) - barHeight;
+                            const barWidth = range === '30d' ? 6 : 24;
+
+                            const shouldShowLabel = (index: number) => {
+                              if (range === '7d') return true;
+                              return index % 5 === 0 || index === chartData.length - 1;
+                            };
+
+                            return (
+                              <g key={i}>
+                                <rect x={x - barWidth/2} y={0} width={barWidth} height={chartHeight - 40} fill="#121214" rx="1.5" />
+                                <rect 
+                                  x={x - barWidth/2} 
+                                  y={y} 
+                                  width={barWidth} 
+                                  height={barHeight} 
+                                  fill="#22c55e" 
+                                  opacity="0.85"
+                                  rx="1.5"
+                                  className="cursor-pointer transition-all duration-200 hover:opacity-100"
+                                  onMouseEnter={() => setHoveredDataPoint(d)}
+                                  onMouseLeave={() => setHoveredDataPoint(null)}
+                                />
+                                {d.count > 0 && range === '7d' && (
+                                  <text x={x} y={y - 6} fill="#a1a1aa" fontSize="9" textAnchor="middle" fontWeight="bold">
+                                    {d.count}
+                                  </text>
+                                )}
+                                {shouldShowLabel(i) && (
+                                  <text x={x} y={chartHeight - 25} fill="#52525b" fontSize="8" textAnchor="middle">
+                                    {range === '30d' 
+                                      ? new Date(d.date).getDate()
+                                      : new Date(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}
+                                  </text>
+                                )}
+                              </g>
+                            );
+                          });
+                        })()}
+                      </svg>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-[#52525b]">
+                  No training data logged for this period.
+                </div>
+              )}
+            </div>
+
+            {/* Category Distribution Analysis Section (Bar Chart) */}
+            <div className="glass-panel rounded-2xl p-6 space-y-4 h-full">
+              <div className="flex items-center gap-2 border-b border-[#27272a]/60 pb-3">
+                <PieChart className="h-4.5 w-4.5" style={{ color: badge.color }} />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Vocabulary Distribution by Category</h3>
               </div>
-            ) : (
-              <div className="text-center py-8 text-sm text-[#52525b]">
-                No training data logged for this period.
-              </div>
-            )}
+              
+              {categoryStats.length > 0 ? (
+                <div className="space-y-4">
+                  {categoryStats.map((cat, idx) => {
+                    const colors = ['#22c55e', '#60a5fa', '#c084fc', '#fb923c', '#f43f5e'];
+                    const barColor = colors[idx % colors.length];
+
+                    return (
+                      <div key={cat.name} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className="text-[#f4f4f5]">{cat.name}</span>
+                          <span className="text-[#a1a1aa] font-mono">{cat.count} phrases ({cat.percentage}%)</span>
+                        </div>
+                        <div className="h-2 w-full bg-[#121214] rounded-full overflow-hidden border border-[#27272a]">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500 ease-out" 
+                            style={{ 
+                              width: `${cat.percentage}%`, 
+                              backgroundColor: barColor 
+                            }} 
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-xs text-[#52525b]">
+                  No vocabulary categories found. Add new sentence chunks to populate the chart.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
