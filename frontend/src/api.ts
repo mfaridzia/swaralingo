@@ -284,3 +284,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     throw err;
   }
 }
+
+export function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
+  window.dispatchEvent(new CustomEvent('showToast', { detail: { message, type } }));
+}

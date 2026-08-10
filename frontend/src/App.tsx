@@ -19,7 +19,7 @@ import { InterviewSimulator } from './components/InterviewSimulator';
 import { JournalCoach } from './components/JournalCoach';
 import type { UserProfile } from './components/Auth';
 
-import { apiFetch, clearAuth, dexieToApiLogs } from './api';
+import { apiFetch, clearAuth, dexieToApiLogs, showToast } from './api';
 
 interface PracticeLog {
   id: number;
@@ -99,6 +99,28 @@ function MainAppLayout({
   const [newPhrase, setNewPhrase] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
   const [newExample, setNewExample] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    const handleToastEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ message: string; type: 'success' | 'error' | 'info' }>;
+      if (customEvent.detail) {
+        setToast({
+          message: customEvent.detail.message,
+          type: customEvent.detail.type || 'success'
+        });
+      }
+    };
+    window.addEventListener('showToast', handleToastEvent);
+    return () => window.removeEventListener('showToast', handleToastEvent);
+  }, []);
 
   // Request browser notification permission on login/dashboard entry
   useEffect(() => {
@@ -189,6 +211,7 @@ function MainAppLayout({
       }),
     onError: (err: any) => {
       setApiErrorMsg(err?.message || 'Failed to save log. Please try again.');
+      showToast(err?.message || 'Failed to save log. Please try again.', 'error');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['logs', activeUser.id] });
@@ -196,6 +219,7 @@ function MainAppLayout({
       setUserInput('');
       setImprovedVersion('');
       setAiFeedback('');
+      showToast('Practice diary entry saved successfully!', 'success');
 
       // Trigger a local notification reminder when successfully practicing
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -214,12 +238,20 @@ function MainAppLayout({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newChunk),
       }).then(res => res.json()),
-    onSuccess: () => {
+    onError: (err: any) => {
+      showToast(err?.message || 'Failed to save vocabulary chunk.', 'error');
+    },
+    onSuccess: (resData) => {
+      if (resData && !resData.success) {
+        showToast(resData.error || 'Failed to save vocabulary chunk.', 'error');
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['chunks', activeUser.id] });
       queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
       setNewPhrase('');
       setNewMeaning('');
       setNewExample('');
+      showToast('Sentence chunk saved successfully!', 'success');
     }
   });
 
@@ -282,8 +314,10 @@ function MainAppLayout({
         const allLogs = await db.logs.orderBy('updatedAt').reverse().toArray();
         queryClient.setQueryData(['logs', activeUser?.id], { success: true, data: dexieToApiLogs(allLogs) });
         queryClient.invalidateQueries({ queryKey: ['stats', activeUser?.id] });
+        showToast('Saved to local queue (Offline Mode)', 'info');
       } catch (err: any) {
         setApiErrorMsg(err?.message || 'Failed to save offline. Storage may be full.');
+        showToast(err?.message || 'Failed to save offline.', 'error');
       }
       return;
     }
@@ -444,6 +478,25 @@ function MainAppLayout({
             >
               Acknowledge & Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Global sleek premium Toast banner */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[9999] animate-slide-up">
+          <div className={`glass-panel px-4 py-3 rounded-xl border flex items-center gap-2.5 shadow-2xl backdrop-blur-md transition-all ${
+            toast.type === 'success' 
+              ? 'border-emerald-500/30 bg-emerald-950/20 text-emerald-300' 
+              : toast.type === 'error'
+              ? 'border-red-500/30 bg-red-950/20 text-red-300'
+              : 'border-zinc-500/30 bg-zinc-950/20 text-zinc-300'
+          }`}>
+            {toast.type === 'success' && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />}
+            {toast.type === 'error' && <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />}
+            {toast.type === 'info' && <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />}
+            <span className="text-[10px] font-extrabold tracking-wider uppercase">{toast.type}</span>
+            <span className="text-xs text-zinc-300 font-medium">{toast.message}</span>
           </div>
         </div>
       )}

@@ -11,13 +11,21 @@ logsRouter.use('*', requireAuth);
 logsRouter.get('/', async (c) => {
   try {
     const userId = c.get('authUserId');
-    // audio_base64 hanya dikembalikan untuk log legacy (audio_key masih null) — data baru via R2
     const logs = await db.query(
       `SELECT id, user_id, user_input, ai_feedback, improved_version, created_at, audio_key,
               CASE WHEN audio_key IS NULL THEN audio_base64 END AS audio_base64
        FROM practice_logs WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`
     ).all(userId);
-    return c.json({ success: true, data: logs });
+
+    const formattedLogs = logs.map((log: any) => {
+      let createdAt = log.created_at;
+      if (createdAt && typeof createdAt === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(createdAt)) {
+        createdAt = createdAt.replace(' ', 'T') + '.000Z';
+      }
+      return { ...log, created_at: createdAt };
+    });
+
+    return c.json({ success: true, data: formattedLogs });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }

@@ -11,7 +11,7 @@ import {
   BrainCircuit,
   Award
 } from 'lucide-react';
-import { apiFetch } from '../api';
+import { apiFetch, showToast } from '../api';
 interface SentenceChunksProps {
   newPhrase: string;
   setNewPhrase: (val: string) => void;
@@ -92,11 +92,19 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
       }),
     })
     .then(res => res.json())
-    .then(() => {
+    .then(data => {
+      if (data && !data.success) {
+        showToast(data.error || 'Failed to save chunk.', 'error');
+        return;
+      }
       setNewPhrase('');
       setNewMeaning('');
       setNewExample('');
+      showToast('Sentence chunk saved successfully!', 'success');
       window.dispatchEvent(new CustomEvent('chunkAdded'));
+    })
+    .catch(err => {
+      showToast(err.message || 'Failed to save chunk.', 'error');
     });
   };
 

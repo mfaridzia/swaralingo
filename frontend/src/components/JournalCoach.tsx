@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { apiFetch } from '../api';
+import { apiFetch, showToast } from '../api';
 
 interface JournalEntry {
   id: number;
@@ -180,6 +180,7 @@ export const JournalCoach: React.FC = () => {
                   };
                 });
                 queryClient.invalidateQueries({ queryKey: ['journals', userId] });
+                showToast('Journal entry saved successfully!', 'success');
                 // Reset cached prompt and fetch new one
                 localStorage.removeItem(PROMPT_CACHE_KEY);
                 fetchPrompt();
@@ -193,7 +194,7 @@ export const JournalCoach: React.FC = () => {
         }
       }
     } catch (error: any) {
-      alert(error.message || "Failed to save journal entry.");
+      showToast(error.message || "Failed to save journal entry.", 'error');
     } finally {
       setIsStreaming(false);
     }

@@ -29,7 +29,14 @@ journalsRouter.get('/', async (c) => {
   try {
     const userId = c.get('authUserId');
     const entries = await db.query('SELECT * FROM journals WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC').all(userId);
-    return c.json({ success: true, data: entries });
+    const formattedEntries = entries.map((entry: any) => {
+      let createdAt = entry.created_at;
+      if (createdAt && typeof createdAt === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(createdAt)) {
+        createdAt = createdAt.replace(' ', 'T') + '.000Z';
+      }
+      return { ...entry, created_at: createdAt };
+    });
+    return c.json({ success: true, data: formattedEntries });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }
