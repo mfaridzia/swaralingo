@@ -25,6 +25,13 @@ NODE_ENV = "production"
 # TURSO_AUTH_TOKEN = "your-turso-auth-token"
 # GEMINI_API_KEY = "your-gemini-api-key"
 
+VAPID_PUBLIC_KEY = "BBJn3qbYXZxRcKLbX_T2mow56XrAFGinh9Je4xcpHba0GIn70jGjvc1Hud6jXk_9Ipa6kC3wGchrEJiW12qg7S8"
+VAPID_PRIVATE_KEY = "aGBvX0eyJD4yLKFtDesBkivpea4O2z-apAAjJwIfdIU"
+VAPID_CONTACT_EMAIL = "mailto:admin@swaralingo.dev"
+
+[triggers]
+crons = [ "* * * * *" ]
+
 # Bucket R2 untuk penyimpanan audio rekaman (buat sekali: wrangler r2 bucket create swaralingo-audio)
 [[r2_buckets]]
 binding = "AUDIO_BUCKET"
