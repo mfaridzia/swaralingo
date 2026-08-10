@@ -1,48 +1,19 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import webpush from 'web-push';
+import { buildPushPayload } from '@block65/webcrypto-web-push';
 import db from '../database.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getEnvVar } from '../config.js';
 
 const notificationsRouter = new Hono();
 
-// Generate or read VAPID keys
-let vapidKeys = {
-  publicKey: '',
-  privateKey: '',
-};
+const DEFAULT_VAPID_PUB = "BBJn3qbYXZxRcKLbX_T2mow56XrAFGinh9Je4xcpHba0GIn70jGjvc1Hud6jXk_9Ipa6kC3wGchrEJiW12qg7S8";
+const DEFAULT_VAPID_PRIV = "aGBvX0eyJD4yLKFtDesBkivpea4O2z-apAAjJwIfdIU";
 
 function getVapidKeys() {
-  if (vapidKeys.publicKey && vapidKeys.privateKey) {
-    return vapidKeys;
-  }
-  const pub = getEnvVar('VAPID_PUBLIC_KEY');
-  const priv = getEnvVar('VAPID_PRIVATE_KEY');
-  if (pub && priv) {
-    vapidKeys.publicKey = pub;
-    vapidKeys.privateKey = priv;
-  } else {
-    // Dynamically generate for local development
-    try {
-      const generated = webpush.generateVAPIDKeys();
-      vapidKeys.publicKey = generated.publicKey;
-      vapidKeys.privateKey = generated.privateKey;
-      console.log('VAPID Keys generated dynamically for dev session.');
-    } catch (e) {
-      console.error('Failed to generate VAPID keys:', e);
-    }
-  }
-  return vapidKeys;
-}
-
-// Set up webpush configuration
-function setupWebPush() {
-  const keys = getVapidKeys();
-  const contact = getEnvVar('VAPID_CONTACT_EMAIL') || 'mailto:admin@swaralingo.dev';
-  if (keys.publicKey && keys.privateKey) {
-    webpush.setVapidDetails(contact, keys.publicKey, keys.privateKey);
-  }
+  const pub = getEnvVar('VAPID_PUBLIC_KEY') || DEFAULT_VAPID_PUB;
+  const priv = getEnvVar('VAPID_PRIVATE_KEY') || DEFAULT_VAPID_PRIV;
+  return { publicKey: pub, privateKey: priv };
 }
 
 // Zod schemas
@@ -127,8 +98,14 @@ notificationsRouter.post('/trigger-cron', async (c) => {
   }
 
   try {
-    const count = await triggerDailyReminders();
-    return c.json({ success: true, triggeredCount: count });
+    let body: any = {};
+    try {
+      body = await c.req.json();
+    } catch (e) {
+      // Ignored
+    }
+    const result = await triggerDailyReminders(body?.time);
+    return c.json({ success: true, triggeredCount: result.sentCount, errors: result.errors });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }
@@ -138,14 +115,15 @@ notificationsRouter.post('/trigger-cron', async (c) => {
  * Triggers sending push notifications to all users whose alarm_time matches the current hour/minute.
  * Runs on cron schedule (every minute or every 15 minutes, matches HH:MM UTC).
  */
-export async function triggerDailyReminders(): Promise<number> {
-  setupWebPush();
-  
-  // Get current time in UTC formatted as "HH:MM"
-  const now = new Date();
-  const utcHours = now.getUTCHours().toString().padStart(2, '0');
-  const utcMinutes = now.getUTCMinutes().toString().padStart(2, '0');
-  const currentTimeStr = `${utcHours}:${utcMinutes}`;
+export async function triggerDailyReminders(overrideTime?: string): Promise<{ sentCount: number, errors: string[] }> {
+  let currentTimeStr = overrideTime;
+  if (!currentTimeStr) {
+    // Get current time in UTC formatted as "HH:MM"
+    const now = new Date();
+    const utcHours = now.getUTCHours().toString().padStart(2, '0');
+    const utcMinutes = now.getUTCMinutes().toString().padStart(2, '0');
+    currentTimeStr = `${utcHours}:${utcMinutes}`;
+  }
   
   console.log(`[Push Notification Cron] Running at UTC ${currentTimeStr}...`);
 
@@ -162,45 +140,72 @@ export async function triggerDailyReminders(): Promise<number> {
   }>;
 
   if (activeSubs.length === 0) {
-    return 0;
+    return { sentCount: 0, errors: [] };
   }
 
+  const errors: string[] = [];
   let sentCount = 0;
+  
   for (const sub of activeSubs) {
     const pushSubscription = {
       endpoint: sub.endpoint,
+      expirationTime: null,
       keys: {
         p256dh: sub.p256dh,
         auth: sub.auth,
       },
     };
 
-    const payload = JSON.stringify({
-      title: 'Time to practice! ⚡',
-      body: 'Keep your daily streak alive. Open SwaraLingo to practice speaking English now.',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
-      data: {
-        url: '/dashboard'
+    const keys = getVapidKeys();
+    const vapid = {
+      subject: getEnvVar('VAPID_CONTACT_EMAIL') || 'mailto:admin@swaralingo.dev',
+      publicKey: keys.publicKey,
+      privateKey: keys.privateKey,
+    };
+
+    const message = {
+      data: JSON.stringify({
+        title: 'Time to practice! ⚡',
+        body: 'Keep your daily streak alive. Open SwaraLingo to practice speaking English now.',
+        icon: '/icon.svg',
+        badge: '/icon.svg',
+        data: {
+          url: '/dashboard'
+        }
+      }),
+      options: {
+        ttl: 60 * 60, // 1 hour
       }
-    });
+    };
 
     try {
-      await webpush.sendNotification(pushSubscription, payload);
-      sentCount++;
-    } catch (err: any) {
-      // Clean up dead/expired subscriptions (Web Push returns 410 Gone or 404 Not Found if expired)
-      if (err.statusCode === 410 || err.statusCode === 404) {
-        console.log(`[Push Notification Cron] Cleaning up expired subscription ID: ${sub.id}`);
-        const deleteStmt = db.prepare('DELETE FROM push_subscriptions WHERE id = ?');
-        await deleteStmt.run(sub.id);
+      const payload = await buildPushPayload(message, pushSubscription, vapid);
+      const res = await fetch(pushSubscription.endpoint, {
+        method: payload.method,
+        headers: payload.headers,
+        body: payload.body as any,
+      });
+
+      if (res.status === 201 || res.status === 200 || res.status === 202) {
+        sentCount++;
       } else {
-        console.error(`[Push Notification Cron] Failed to send to sub ID ${sub.id}:`, err.message);
+        if (res.status === 410 || res.status === 404) {
+          console.log(`[Push Notification Cron] Cleaning up expired subscription ID: ${sub.id}`);
+          const deleteStmt = db.prepare('DELETE FROM push_subscriptions WHERE id = ?');
+          await deleteStmt.run(sub.id);
+        } else {
+          const resText = await res.text();
+          console.error(`[Push Notification Cron] HTTP ${res.status} error for sub ID ${sub.id}:`, resText);
+          errors.push(`Sub ID ${sub.id} HTTP Error ${res.status}: ${resText}`);
+        }
       }
+    } catch (err: any) {
+      console.error(`[Push Notification Cron] Exception for sub ID ${sub.id}:`, err);
+      errors.push(`Sub ID ${sub.id} Exception: ${err.message || err.toString()}`);
     }
   }
 
-  return sentCount;
+  return { sentCount, errors };
 }
 
 export default notificationsRouter;
