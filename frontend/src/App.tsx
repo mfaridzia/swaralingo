@@ -267,7 +267,7 @@ function MainAppLayout({
         setAiFeedback('');
         // Update UI from Dexie directly (no server refetch — entry not synced yet)
         const { db } = await import('./offline/db/dexie');
-        const allLogs = await db.logs.orderBy('created_at').reverse().toArray();
+        const allLogs = await db.logs.orderBy('updatedAt').reverse().toArray();
         queryClient.setQueryData(['logs', activeUser?.id], { success: true, data: dexieToApiLogs(allLogs) });
         queryClient.invalidateQueries({ queryKey: ['stats', activeUser?.id] });
       } catch (err: any) {

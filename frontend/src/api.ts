@@ -133,7 +133,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     const table = getReadTable(path);
     if (table) {
       const records = await (table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals)
-        .orderBy('created_at')
+        .orderBy('updatedAt')
         .reverse()
         .toArray();
       return toJsonResponse(records, table);
