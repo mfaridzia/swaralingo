@@ -4,7 +4,7 @@ import { BookOpen, Settings, LogOut, Menu, X, ChevronDown } from 'lucide-react';
 import type { UserProfile } from './Auth';
 
 interface NavbarProps {
-  activeTab: 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator';
+  activeTab: 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' | 'journal';
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
   user: UserProfile | null;
