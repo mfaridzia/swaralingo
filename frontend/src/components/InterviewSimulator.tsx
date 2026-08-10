@@ -392,7 +392,7 @@ export const InterviewSimulator: React.FC = () => {
           <div className="lg:col-span-8 space-y-6">
             <div className="glass-panel rounded-2xl p-6 border border-[#27272a] h-[500px] flex flex-col justify-between bg-[#121214]/60">
               {/* Chats List */}
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-thin">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 custom-scrollbar">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}

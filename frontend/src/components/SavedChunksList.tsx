@@ -131,7 +131,7 @@ export const SavedChunksList: React.FC<SavedChunksListProps> = ({ chunks, loadin
         />
       </div>
 
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
         {loadingChunks ? (
           <div className="text-center py-8 text-sm text-[#a1a1aa]">Loading chunks...</div>
         ) : filteredChunks.length > 0 ? (

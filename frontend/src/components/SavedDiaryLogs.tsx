@@ -235,7 +235,7 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
         />
       </div>
 
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
         {loadingLogs ? (
           <div className="text-center py-8 text-sm text-[#a1a1aa]">Loading diary...</div>
         ) : filteredLogs.length > 0 ? (
