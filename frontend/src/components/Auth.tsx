@@ -45,6 +45,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       try {
         const res = await apiFetch("/auth/google", {
           method: "POST",
+          skipAuthRedirect: true,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ credential: response.credential }),
         });
@@ -112,6 +113,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       const response = await apiFetch(endpoint, {
         method: "POST",
+        skipAuthRedirect: true,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
