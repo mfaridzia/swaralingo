@@ -19,9 +19,11 @@ interface PracticeLog {
 interface SavedDiaryLogsProps {
   logs: { success: boolean; data: PracticeLog[] } | undefined;
   loadingLogs: boolean;
+  limit: number;
+  onLoadMore: () => void;
 }
 
-export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLogs }) => {
+export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLogs, limit, onLoadMore }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [transcribingLogId, setTranscribingLogId] = useState<number | null>(null);
   const [transcriptions, setTranscriptions] = useState<{ [logId: number]: string }>({});
@@ -310,6 +312,15 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
           <div className="text-center py-12 border border-dashed border-[#27272a] rounded-xl text-sm text-[#52525b]">
             {searchQuery ? 'No matching logs found.' : 'No diary logs yet. Create your first translation!'}
           </div>
+        )}
+
+        {logs?.data && logs.data.length >= limit && (
+          <button
+            onClick={onLoadMore}
+            className="w-full text-center text-xs font-bold border border-[#27272a] hover:border-zinc-400 py-3.5 rounded-xl cursor-pointer bg-zinc-950/20 text-[#a1a1aa] hover:text-white transition-all mt-4"
+          >
+            Load More Records
+          </button>
         )}
       </div>
     </div>

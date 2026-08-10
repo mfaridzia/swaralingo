@@ -60,10 +60,12 @@ export const JournalCoach: React.FC = () => {
     setWordCount(words);
   }, [journalContent]);
 
+  const [journalsLimit, setJournalsLimit] = useState(10);
+
   // Fetch journal entries history
   const { data: entriesData, isLoading: loadingEntries } = useQuery<{ success: boolean; data: JournalEntry[] }>({
-    queryKey: ['journals', userId],
-    queryFn: () => apiFetch(`/journals?userId=${userId}`).then(res => res.json()),
+    queryKey: ['journals', userId, journalsLimit],
+    queryFn: () => apiFetch(`/journals?userId=${userId}&limit=${journalsLimit}`).then(res => res.json()),
     enabled: !!userId,
   });
 
@@ -452,6 +454,15 @@ export const JournalCoach: React.FC = () => {
                 </div>
               );
             })}
+
+            {entries.length >= journalsLimit && (
+              <button
+                onClick={() => setJournalsLimit(prev => prev + 10)}
+                className="w-full text-center text-xs font-bold border border-[#27272a] hover:border-zinc-400 py-3.5 rounded-xl cursor-pointer bg-zinc-950/20 text-[#a1a1aa] hover:text-white transition-all mt-4"
+              >
+                Load More Journal Entries
+              </button>
+            )}
           </div>
         )}
       </div>

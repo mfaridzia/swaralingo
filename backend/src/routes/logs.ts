@@ -11,11 +11,21 @@ logsRouter.use('*', requireAuth);
 logsRouter.get('/', async (c) => {
   try {
     const userId = c.get('authUserId');
-    const logs = await db.query(
-      `SELECT id, user_id, user_input, ai_feedback, improved_version, created_at, audio_key,
-              CASE WHEN audio_key IS NULL THEN audio_base64 END AS audio_base64
-       FROM practice_logs WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`
-    ).all(userId);
+    const limitQuery = c.req.query('limit');
+    const limit = limitQuery ? Number(limitQuery) : null;
+
+    let query = `
+      SELECT id, user_id, user_input, ai_feedback, improved_version, created_at, audio_key,
+             CASE WHEN audio_key IS NULL THEN audio_base64 END AS audio_base64
+      FROM practice_logs WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC
+    `;
+    const params: any[] = [userId];
+    if (limit !== null) {
+      query += ` LIMIT ?`;
+      params.push(limit);
+    }
+
+    const logs = await db.query(query).all(...params);
 
     const formattedLogs = logs.map((log: any) => {
       let createdAt = log.created_at;

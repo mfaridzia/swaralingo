@@ -28,7 +28,17 @@ const journalSubmitSchema = z.object({
 journalsRouter.get('/', async (c) => {
   try {
     const userId = c.get('authUserId');
-    const entries = await db.query('SELECT * FROM journals WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC').all(userId);
+    const limitQuery = c.req.query('limit');
+    const limit = limitQuery ? Number(limitQuery) : null;
+
+    let query = 'SELECT * FROM journals WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC';
+    const params: any[] = [userId];
+    if (limit !== null) {
+      query += ' LIMIT ?';
+      params.push(limit);
+    }
+
+    const entries = await db.query(query).all(...params);
     const formattedEntries = entries.map((entry: any) => {
       let createdAt = entry.created_at;
       if (createdAt && typeof createdAt === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(createdAt)) {

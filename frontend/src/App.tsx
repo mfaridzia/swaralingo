@@ -177,16 +177,19 @@ function MainAppLayout({
 
   const activeTab = getActiveTab();
 
+  const [diaryLimit, setDiaryLimit] = useState(10);
+  const [chunksLimit, setChunksLimit] = useState(10);
+
   // Queries
   const { data: logs, isLoading: loadingLogs } = useQuery<{ success: boolean; data: PracticeLog[] }>({
-    queryKey: ['logs', activeUser.id],
-    queryFn: () => apiFetch(`/logs?userId=${activeUser.id}`).then(res => res.json()),
+    queryKey: ['logs', activeUser.id, diaryLimit],
+    queryFn: () => apiFetch(`/logs?userId=${activeUser.id}&limit=${diaryLimit}`).then(res => res.json()),
     enabled: !!activeUser,
   });
 
   const { data: chunks, isLoading: loadingChunks } = useQuery<{ success: boolean; data: SentenceChunk[] }>({
-    queryKey: ['chunks', activeUser.id],
-    queryFn: () => apiFetch(`/chunks?userId=${activeUser.id}`).then(res => res.json()),
+    queryKey: ['chunks', activeUser.id, chunksLimit],
+    queryFn: () => apiFetch(`/chunks?userId=${activeUser.id}&limit=${chunksLimit}`).then(res => res.json()),
     enabled: !!activeUser,
   });
 
@@ -386,7 +389,7 @@ function MainAppLayout({
                     />
                   </div>
                   <div className="lg:col-span-5">
-                    <SavedDiaryLogs logs={logs} loadingLogs={loadingLogs} />
+                    <SavedDiaryLogs logs={logs} loadingLogs={loadingLogs} limit={diaryLimit} onLoadMore={() => setDiaryLimit(prev => prev + 10)} />
                   </div>
                 </div>
               </AnimatedRouteWrapper>
@@ -407,7 +410,7 @@ function MainAppLayout({
                     />
                   </div>
                   <div className="lg:col-span-5">
-                    <SavedChunksList chunks={chunks} loadingChunks={loadingChunks} />
+                    <SavedChunksList chunks={chunks} loadingChunks={loadingChunks} limit={chunksLimit} onLoadMore={() => setChunksLimit(prev => prev + 10)} />
                   </div>
                 </div>
               </AnimatedRouteWrapper>
