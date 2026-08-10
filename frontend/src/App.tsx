@@ -10,7 +10,8 @@ import { SyncBanner } from './offline/indicator';
 import { PracticeDiary } from './components/PracticeDiary';
 import { SentenceChunks } from './components/SentenceChunks';
 import { Dashboard } from './components/Dashboard';
-import { SavedRecords } from './components/SavedRecords';
+import { SavedDiaryLogs } from './components/SavedDiaryLogs';
+import { SavedChunksList } from './components/SavedChunksList';
 import { Auth } from './components/Auth';
 import { Settings } from './components/Settings';
 import { LandingPage } from './components/LandingPage';
@@ -331,84 +332,97 @@ function MainAppLayout({
         onLogout={handleLogout}
       />
 
-      <main className="mx-auto px-5 py-12 md:px-6 lg:px-0 max-w-[1200px] grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-7 space-y-8">
-          {/* Framer motion page transition anim triggers */}
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route index element={
-                <PracticeDiary 
-                  targetLanguage={activeUser.target_language || 'English'}
-                  userInput={userInput}
-                  setUserInput={setUserInput}
-                  improvedVersion={improvedVersion}
-                  aiFeedback={aiFeedback}
-                  isGenerating={isGenerating}
-                  handleQuickImprove={handleQuickImprove}
-                  handleSaveLog={handleSaveLog}
-                />
-              } />
+      <main className="mx-auto px-5 py-12 md:px-6 lg:px-0 max-w-[1200px]">
+        {/* Framer motion page transition anim triggers */}
+        <AnimatePresence mode="wait">
+          <Routes>
+            <Route index element={
+              <AnimatedRouteWrapper>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  <div className="lg:col-span-7 space-y-8">
+                    <PracticeDiary 
+                      targetLanguage={activeUser.target_language || 'English'}
+                      userInput={userInput}
+                      setUserInput={setUserInput}
+                      improvedVersion={improvedVersion}
+                      aiFeedback={aiFeedback}
+                      isGenerating={isGenerating}
+                      handleQuickImprove={handleQuickImprove}
+                      handleSaveLog={handleSaveLog}
+                    />
+                  </div>
+                  <div className="lg:col-span-5">
+                    <SavedDiaryLogs logs={logs} loadingLogs={loadingLogs} />
+                  </div>
+                </div>
+              </AnimatedRouteWrapper>
+            } />
 
-              <Route path="/chunks" element={
-                <AnimatedRouteWrapper>
-                  <SentenceChunks 
-                    newPhrase={newPhrase}
-                    setNewPhrase={setNewPhrase}
-                    newMeaning={newMeaning}
-                    setNewMeaning={setNewMeaning}
-                    newExample={newExample}
-                    setNewExample={setNewExample}
-                    handleSaveChunk={handleSaveChunk}
-                  />
-                </AnimatedRouteWrapper>
-              } />
+            <Route path="/chunks" element={
+              <AnimatedRouteWrapper>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  <div className="lg:col-span-7 space-y-8">
+                    <SentenceChunks 
+                      newPhrase={newPhrase}
+                      setNewPhrase={setNewPhrase}
+                      newMeaning={newMeaning}
+                      setNewMeaning={setNewMeaning}
+                      newExample={newExample}
+                      setNewExample={setNewExample}
+                      handleSaveChunk={handleSaveChunk}
+                    />
+                  </div>
+                  <div className="lg:col-span-5">
+                    <SavedChunksList chunks={chunks} loadingChunks={loadingChunks} />
+                  </div>
+                </div>
+              </AnimatedRouteWrapper>
+            } />
 
-              <Route path="/stats" element={
-                <AnimatedRouteWrapper>
+            <Route path="/stats" element={
+              <AnimatedRouteWrapper>
+                <div className="w-full">
                   <Dashboard 
                     stats={stats}
                     loadingStats={loadingStats}
                     hoveredDataPoint={hoveredDataPoint}
                     setHoveredDataPoint={setHoveredDataPoint}
                   />
-                </AnimatedRouteWrapper>
-              } />
+                </div>
+              </AnimatedRouteWrapper>
+            } />
 
-              <Route path="/settings" element={
-                <AnimatedRouteWrapper>
+            <Route path="/settings" element={
+              <AnimatedRouteWrapper>
+                <div className="max-w-3xl mx-auto">
                   <Settings 
                     user={activeUser}
                     onProfileUpdated={handleLogin}
                   />
-                </AnimatedRouteWrapper>
-              } />
+                </div>
+              </AnimatedRouteWrapper>
+            } />
 
-              <Route path="/simulator" element={
-                <AnimatedRouteWrapper>
+            <Route path="/simulator" element={
+              <AnimatedRouteWrapper>
+                <div className="w-full">
                   <InterviewSimulator />
-                </AnimatedRouteWrapper>
-              } />
+                </div>
+              </AnimatedRouteWrapper>
+            } />
 
-              <Route path="/journal" element={
-                <AnimatedRouteWrapper>
+            <Route path="/journal" element={
+              <AnimatedRouteWrapper>
+                <div className="w-full">
                   <JournalCoach />
-                </AnimatedRouteWrapper>
-              } />
+                </div>
+              </AnimatedRouteWrapper>
+            } />
 
-              {/* Redirect fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </AnimatePresence>
-        </div>
-
-        <SavedRecords
-          activeTab={activeTab}
-          logs={logs}
-          loadingLogs={loadingLogs}
-          chunks={chunks}
-          loadingChunks={loadingChunks}
-          userId={activeUser.id}
-        />
+            {/* Redirect fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AnimatePresence>
       </main>
 
       {/* Premium Error Modal Overlay */}
