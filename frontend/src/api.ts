@@ -39,9 +39,30 @@ function getReadTable(path: string): 'logs' | 'chunks' | 'journals' | null {
   return null;
 }
 
+// Normalize created_at to ISO format for consistent Dexie sorting.
+// Server sends "YYYY-MM-DD HH:MM:SS", client creates "YYYY-MM-DDTHH:MM:SS.sssZ".
+function normalizeCreatedAt(created_at: string): string {
+  if (!created_at) return created_at;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(created_at)) return created_at; // already ISO
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(created_at)) {
+    return new Date(created_at.replace(' ', 'T') + 'Z').toISOString();
+  }
+  return created_at;
+}
+
+// Map Dexie-local records to API shape (add `id` from serverId/localId for React keys).
+export function dexieToApiLogs(records: any[]): any[] {
+  return records.map(r => ({
+    ...r,
+    id: r.serverId || r.localId,
+    created_at: normalizeCreatedAt(r.created_at),
+  }));
+}
+
 // Helper: convert Dexie records to server-like JSON response
-function toJsonResponse(data: unknown): Response {
-  return new Response(JSON.stringify({ success: true, data }), {
+function toJsonResponse(data: unknown, table?: string): Response {
+  const mapped = table ? dexieToApiLogs(data as any[]) : data;
+  return new Response(JSON.stringify({ success: true, data: mapped }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
@@ -70,7 +91,7 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
         audio_key: row.audio_key,
         audio_base64: row.audio_base64,
         mistake_category: row.mistake_category,
-        created_at: row.created_at,
+        created_at: normalizeCreatedAt(row.created_at),
       });
     } else if (table === 'chunks') {
       await db.chunks.put({
@@ -83,7 +104,7 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
         interval: row.interval || 0,
         repetition: row.repetition || 0,
         easiness: row.easiness || 2.5,
-        created_at: row.created_at,
+        created_at: normalizeCreatedAt(row.created_at),
       });
     } else if (table === 'journals') {
       await db.journals.put({
@@ -92,7 +113,7 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
         content: row.content,
         mood: row.mood,
         ai_reflection: row.ai_reflection,
-        created_at: row.created_at,
+        created_at: normalizeCreatedAt(row.created_at),
       });
     }
   }
@@ -115,7 +136,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
         .orderBy('created_at')
         .reverse()
         .toArray();
-      return toJsonResponse(records);
+      return toJsonResponse(records, table);
     }
     // Audio: serve from audioBlobs
     if (path.startsWith('/audio/')) {

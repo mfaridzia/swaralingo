@@ -18,7 +18,7 @@ import { InterviewSimulator } from './components/InterviewSimulator';
 import { JournalCoach } from './components/JournalCoach';
 import type { UserProfile } from './components/Auth';
 
-import { apiFetch, clearAuth } from './api';
+import { apiFetch, clearAuth, dexieToApiLogs } from './api';
 
 interface PracticeLog {
   id: number;
@@ -268,7 +268,7 @@ function MainAppLayout({
         // Update UI from Dexie directly (no server refetch — entry not synced yet)
         const { db } = await import('./offline/db/dexie');
         const allLogs = await db.logs.orderBy('created_at').reverse().toArray();
-        queryClient.setQueryData(['logs', activeUser?.id], { success: true, data: allLogs });
+        queryClient.setQueryData(['logs', activeUser?.id], { success: true, data: dexieToApiLogs(allLogs) });
         queryClient.invalidateQueries({ queryKey: ['stats', activeUser?.id] });
       } catch (err: any) {
         setApiErrorMsg(err?.message || 'Failed to save offline. Storage may be full.');
