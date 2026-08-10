@@ -93,6 +93,15 @@ export class SwaraLingoDB extends Dexie {
       audioBlobs: '++id, audioKey, status',
       pendingSync: '++id, table, clientId, status, createdAt',
     });
+
+    // v2: add updatedAt index for consistent epoch-ms sorting
+    this.version(2).stores({
+      logs: '++localId, clientId, userId, created_at, synced, updatedAt',
+      chunks: '++localId, clientId, userId, created_at, synced, updatedAt',
+      journals: '++localId, clientId, userId, created_at, synced, updatedAt',
+      audioBlobs: '++id, audioKey, status',
+      pendingSync: '++id, table, clientId, status, createdAt',
+    });
   }
 }
 
