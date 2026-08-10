@@ -188,14 +188,17 @@ export async function enqueueMutation(
   try {
     // Write optimistically to local table
     if (operation === 'insert') {
-      const record = {
+      const record: any = {
         clientId,
         userId: cleanData.userId as number,
         ...cleanData,
         updatedAt: clientUpdatedAt,
         synced: false,
       };
-      if (table === 'logs') await db.logs.put(record as any);
+      if (table === 'logs' && audioBlobId != null) {
+        record.audioBlobId = audioBlobId;
+      }
+      if (table === 'logs') await db.logs.put(record);
       else if (table === 'chunks') await db.chunks.put(record as any);
       else if (table === 'journals') await db.journals.put(record as any);
     } else if (operation === 'update') {

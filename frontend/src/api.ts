@@ -68,13 +68,23 @@ function toJsonResponse(data: unknown, table?: string): Response {
   });
 }
 
-// Helper: cache online GET response into Dexie
+// Helper: cache online GET response into Dexie (upsert by clientId — no duplicates)
 async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: number, json: any): Promise<void> {
   if (!json.success || !Array.isArray(json.data)) return;
 
-  for (const row of json.data) {
+  const dexieTable = table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals;
+  const rows = json.data as any[];
+
+  // Find existing records by clientId so we upsert (not blind insert → duplicates)
+  const clientIds = rows.map(r => r.client_uuid || `server-${r.id}`);
+  const existing = await dexieTable.where('clientId').anyOf(clientIds).toArray();
+  const localIdByClient = new Map(existing.map(r => [r.clientId, r.localId]));
+
+  const records = rows.map(row => {
     const clientId = row.client_uuid || `server-${row.id}`;
+    const localId = localIdByClient.get(clientId); // undefined if new → Dexie auto-generates
     const base = {
+      localId,
       clientId,
       serverId: row.id,
       userId,
@@ -83,7 +93,7 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
     };
 
     if (table === 'logs') {
-      await db.logs.put({
+      return {
         ...base,
         user_input: row.user_input,
         ai_feedback: row.ai_feedback,
@@ -92,31 +102,35 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
         audio_base64: row.audio_base64,
         mistake_category: row.mistake_category,
         created_at: normalizeCreatedAt(row.created_at),
-      });
+      };
     } else if (table === 'chunks') {
-      await db.chunks.put({
+      const createdAt = normalizeCreatedAt(row.created_at);
+      return {
         ...base,
         phrase: row.phrase,
         meaning: row.meaning,
         example: row.example,
         category: row.category,
-        next_review_at: row.next_review_at || row.created_at,
+        next_review_at: row.next_review_at || createdAt,
         interval: row.interval || 0,
         repetition: row.repetition || 0,
         easiness: row.easiness || 2.5,
-        created_at: normalizeCreatedAt(row.created_at),
-      });
-    } else if (table === 'journals') {
-      await db.journals.put({
+        created_at: createdAt,
+      };
+    } else {
+      // journals
+      return {
         ...base,
         prompt: row.prompt,
         content: row.content,
         mood: row.mood,
         ai_reflection: row.ai_reflection,
         created_at: normalizeCreatedAt(row.created_at),
-      });
+      };
     }
-  }
+  });
+
+  await dexieTable.bulkPut(records);
 }
 
 // Satu-satunya jalur request API: attach cookie + auto-logout saat sesi invalid/expired.

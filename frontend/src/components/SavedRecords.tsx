@@ -11,6 +11,7 @@ interface PracticeLog {
   improved_version: string;
   audio_base64?: string | null;
   audio_key?: string | null;
+  audioBlobId?: number;    // FK ke audioBlobs (offline, sebelum sync)
   created_at: string;
   client_uuid?: string;
 }
@@ -48,17 +49,26 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
   // <audio> browser tak bisa kirim Authorization header → fetch via apiFetch → blob URL.
   // Legacy base64 langsung dipakai sebagai src.
   const loadAudioUrl = async (log: PracticeLog) => {
-    if (!log.audio_key || audioUrls[log.id]) return;
+    if (audioUrls[log.id]) return;
     try {
-      const res = await apiFetch(`/audio/${log.audio_key}`);
-      const blob = await res.blob();
-      setAudioUrls(prev => ({ ...prev, [log.id]: URL.createObjectURL(blob) }));
+      if (log.audio_key) {
+        const res = await apiFetch(`/audio/${log.audio_key}`);
+        const blob = await res.blob();
+        setAudioUrls(prev => ({ ...prev, [log.id]: URL.createObjectURL(blob) }));
+      } else if (log.audioBlobId) {
+        // Offline: read blob from local Dexie
+        const { db } = await import('../offline/db/dexie');
+        const record = await db.audioBlobs.get(log.audioBlobId);
+        if (record?.blob) {
+          setAudioUrls(prev => ({ ...prev, [log.id]: URL.createObjectURL(record.blob) }));
+        }
+      }
     } catch { /* audio tidak tersedia — biarkan kosong */ }
   };
 
   useEffect(() => {
     if (!Array.isArray(logs?.data)) return;
-    logs.data.forEach(log => { if (log.audio_key) loadAudioUrl(log); });
+    logs.data.forEach(log => { if (log.audio_key || (log as any).audioBlobId) loadAudioUrl(log); });
   }, [logs]);
 
   const downloadAudio = async (log: PracticeLog) => {
@@ -77,19 +87,44 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
       a.href = log.audio_base64;
       a.download = fileName;
       a.click();
+    } else if (log.audioBlobId) {
+      const { db } = await import('../offline/db/dexie');
+      const record = await db.audioBlobs.get(log.audioBlobId);
+      if (record?.blob) {
+        const url = URL.createObjectURL(record.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     }
   };
 
   const handleTranscribe = async (log: PracticeLog) => {
-    if (!log.audio_key && !log.audio_base64) return;
+    if (!log.audio_key && !log.audio_base64 && !log.audioBlobId) return;
     setTranscribingLogId(log.id);
     try {
+      // Resolve audioBase64 from offline blob if needed
+      let audioBase64 = log.audio_base64 || undefined;
+      if (!audioBase64 && log.audioBlobId) {
+        const { db } = await import('../offline/db/dexie');
+        const record = await db.audioBlobs.get(log.audioBlobId);
+        if (record?.blob) {
+          audioBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(record.blob);
+          });
+        }
+      }
       const res = await apiFetch('/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audioKey: log.audio_key || undefined,
-          audioBase64: log.audio_base64 || undefined,
+          audioBase64,
           targetLanguage: localStorage.getItem('fluency_user') ? JSON.parse(localStorage.getItem('fluency_user')!).target_language || 'English' : 'English'
         }),
       });
@@ -320,11 +355,11 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
                   <p className="text-xs font-medium text-[#4ade80] break-all">"{log.improved_version}"</p>
                 </div>
 
-                {(log.audio_key || log.audio_base64) && (
+                {(log.audio_key || log.audio_base64 || log.audioBlobId) && (
                   <div className="space-y-2 border-t border-[#27272a]/60 pt-3 mt-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <audio
-                        src={log.audio_key ? audioUrls[log.id] || '' : log.audio_base64 || ''}
+                        src={audioUrls[log.id] || log.audio_base64 || ''}
                         controls
                         className="h-7 w-full max-w-[170px] rounded-lg bg-[#121214] opacity-80 hover:opacity-100 transition-opacity"
                       />

@@ -12,6 +12,7 @@ export interface LogRecord {
   improved_version: string;
   audio_key?: string | null;
   audio_base64?: string | null;
+  audioBlobId?: number;    // FK ke audioBlobs untuk audio offline (sebelum sync)
   mistake_category?: string;
   created_at: string;      // ISO date from server or client
   updatedAt: number;       // epoch ms (LWW key)
