@@ -57,7 +57,8 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
   };
 
   useEffect(() => {
-    (logs?.data || []).forEach(log => { if (log.audio_key) loadAudioUrl(log); });
+    if (!Array.isArray(logs?.data)) return;
+    logs.data.forEach(log => { if (log.audio_key) loadAudioUrl(log); });
   }, [logs]);
 
   const downloadAudio = async (log: PracticeLog) => {

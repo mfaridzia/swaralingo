@@ -60,7 +60,7 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setChunks(data.data || []);
+          setChunks(Array.isArray(data.data) ? data.data : []);
         }
         setLoadingChunks(false);
       })
