@@ -164,6 +164,10 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
 
     if (table) {
       const operation = reqMethod === 'DELETE' ? 'delete' : reqMethod === 'PUT' ? 'update' : 'insert';
+      // Inject created_at for inserts (body from mutations doesn't include it)
+      if (operation === 'insert' && !body.created_at && !body.createdAt) {
+        body.created_at = new Date().toISOString();
+      }
       await enqueueMutation(table, operation, body);
       return toJsonResponse(body);
     }

@@ -122,6 +122,10 @@ syncRouter.post('/', async (c) => {
         // Inject clientId + timestamp into data (not trusted from client data object)
         clean['client_uuid'] = mut.clientId;
         clean['updated_at'] = mut.clientUpdatedAt;
+        // Guard: if created_at is missing or null, default to now
+        if (!clean['created_at']) {
+          clean['created_at'] = new Date().toISOString().replace('T', ' ').slice(0, 19);
+        }
 
         if (mut.operation === 'insert') {
           // Idempotent: check if client_uuid already exists
