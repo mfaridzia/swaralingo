@@ -403,6 +403,7 @@ function MainAppLayout({
         </div>
 
         <SavedRecords
+          key={location.pathname}
           activeTab={activeTab}
           logs={logs}
           loadingLogs={loadingLogs}
