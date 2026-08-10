@@ -234,7 +234,7 @@ function MainAppLayout({
 
     // Offline mode: queue locally instead of posting to server
     const offlineStore = (await import('./offline/store')).getOfflineStore();
-    if (offlineStore.offlineModeEnabled && !navigator.onLine) {
+    if (offlineStore.offlineModeEnabled) {
       const { enqueueMutation, enqueueAudio } = await import('./offline/sync/engine');
       let audioBlobId: number | undefined;
       if (audioBlob) {

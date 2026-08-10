@@ -116,6 +116,23 @@ export const db = {
   }
 };
 
+// Helper: run migration SQL, only ignore "already exists" errors, re-throw real errors
+async function migrate(sql: string, label?: string): Promise<void> {
+  try {
+    await db.run(sql);
+    if (label) console.log(`[migrate] OK: ${label}`);
+  } catch (e: any) {
+    const msg = e?.message ?? String(e);
+    // SQLite/Turso "duplicate column" / "already exists" — safe to ignore
+    if (/duplicate column|already exists|SQLITE_ERROR.*no such/.test(msg)) {
+      if (label) console.log(`[migrate] SKIP (already applied): ${label}`);
+      return;
+    }
+    console.error(`[migrate] FAIL: ${label || sql.slice(0, 80)} — ${msg}`);
+    throw e;
+  }
+}
+
 export async function initDB() {
   // 1. Buat tabel users
   await db.run(`
@@ -142,62 +159,22 @@ export async function initDB() {
     )
   `);
 
-  try {
-    await db.run(`ALTER TABLE users ADD COLUMN target_language TEXT DEFAULT 'English'`);
-  } catch (e) {
-    // Diabaikan jika kolom target_language sudah ada
-  }
+  // Migrations — idempotent dengan helper migrate()
+  await migrate(`ALTER TABLE users ADD COLUMN target_language TEXT DEFAULT 'English'`, 'users.target_language');
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN user_id INTEGER`, 'logs.user_id');
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN audio_base64 TEXT`, 'logs.audio_base64');
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN audio_key TEXT`, 'logs.audio_key');
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN mistake_category TEXT DEFAULT 'None'`, 'logs.mistake_category');
 
-  // Tambahkan kolom user_id jika tabel logs lama sudah ada sebelumnya tanpa kolom tersebut
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN user_id INTEGER`);
-  } catch (e) {
-    // Diabaikan jika kolom user_id sudah ada
-  }
+  // Offline-first sync: practice_logs
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN updated_at INTEGER`, 'logs.updated_at');
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN client_uuid TEXT`, 'logs.client_uuid');
+  await migrate(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_client_uuid ON practice_logs(client_uuid)`, 'logs.idx_client_uuid (unique)');
+  await migrate(`ALTER TABLE practice_logs ADD COLUMN deleted_at INTEGER`, 'logs.deleted_at');
+  await migrate(`UPDATE practice_logs SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`, 'logs.backfill updated_at');
+  await migrate(`CREATE INDEX IF NOT EXISTS idx_logs_client_uuid ON practice_logs(client_uuid)`, 'logs.idx_client_uuid');
 
-  // Tambahkan kolom audio_base64 jika belum ada
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN audio_base64 TEXT`);
-  } catch (e) {
-    // Diabaikan jika kolom audio_base64 sudah ada
-  }
-
-  // Tambahkan kolom audio_key (referensi object Cloudflare R2 / file lokal) jika belum ada
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN audio_key TEXT`);
-  } catch (e) {
-    // Diabaikan jika kolom audio_key sudah ada
-  }
-
-  // Tambahkan kolom mistake_category jika belum ada
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN mistake_category TEXT DEFAULT 'None'`);
-  } catch (e) {
-    // Diabaikan jika kolom mistake_category sudah ada
-  }
-
-  // Offline-first sync: updated_at (epoch ms), client_uuid (idempotency), deleted_at (soft delete)
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN updated_at INTEGER`);
-  } catch (e) {}
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN client_uuid TEXT`);
-  } catch (e) {}
-  try {
-    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_client_uuid ON practice_logs(client_uuid)`);
-  } catch (e) {}
-  try {
-    await db.run(`ALTER TABLE practice_logs ADD COLUMN deleted_at INTEGER`);
-  } catch (e) {}
-  // Backfill updated_at from created_at (strftime epoch seconds * 1000 = ms)
-  try {
-    await db.run(`UPDATE practice_logs SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`);
-  } catch (e) {}
-  try {
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_logs_client_uuid ON practice_logs(client_uuid)`);
-  } catch (e) {}
-
-  // 3. Buat tabel sentence_chunks (dengan referensi user_id)
+  // 3. Buat tabel sentence_chunks
   await db.run(`
     CREATE TABLE IF NOT EXISTS sentence_chunks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,45 +192,19 @@ export async function initDB() {
     )
   `);
 
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN user_id INTEGER`);
-  } catch (e) {
-    // Diabaikan jika kolom user_id sudah ada
-  }
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN user_id INTEGER`, 'chunks.user_id');
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN next_review_at DATETIME DEFAULT CURRENT_TIMESTAMP`, 'chunks.next_review_at');
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN interval INTEGER DEFAULT 0`, 'chunks.interval');
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN repetition INTEGER DEFAULT 0`, 'chunks.repetition');
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN easiness REAL DEFAULT 2.5`, 'chunks.easiness');
 
-  // Tambahkan kolom review jika tabel lama sudah terlanjur dibuat tanpa review columns
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN next_review_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
-  } catch (e) { }
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN interval INTEGER DEFAULT 0`);
-  } catch (e) { }
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN repetition INTEGER DEFAULT 0`);
-  } catch (e) { }
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN easiness REAL DEFAULT 2.5`);
-  } catch (e) { }
-
-  // Offline-first sync columns
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN updated_at INTEGER`);
-  } catch (e) {}
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN client_uuid TEXT`);
-  } catch (e) {}
-  try {
-    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_chunks_client_uuid ON sentence_chunks(client_uuid)`);
-  } catch (e) {}
-  try {
-    await db.run(`ALTER TABLE sentence_chunks ADD COLUMN deleted_at INTEGER`);
-  } catch (e) {}
-  try {
-    await db.run(`UPDATE sentence_chunks SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`);
-  } catch (e) {}
-  try {
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_chunks_client_uuid ON sentence_chunks(client_uuid)`);
-  } catch (e) {}
+  // Offline-first sync: sentence_chunks
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN updated_at INTEGER`, 'chunks.updated_at');
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN client_uuid TEXT`, 'chunks.client_uuid');
+  await migrate(`CREATE UNIQUE INDEX IF NOT EXISTS idx_chunks_client_uuid ON sentence_chunks(client_uuid)`, 'chunks.idx_client_uuid (unique)');
+  await migrate(`ALTER TABLE sentence_chunks ADD COLUMN deleted_at INTEGER`, 'chunks.deleted_at');
+  await migrate(`UPDATE sentence_chunks SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`, 'chunks.backfill updated_at');
+  await migrate(`CREATE INDEX IF NOT EXISTS idx_chunks_client_uuid ON sentence_chunks(client_uuid)`, 'chunks.idx_client_uuid');
 
   // 4. Buat tabel analysis_cache
   await db.run(`
@@ -279,25 +230,13 @@ export async function initDB() {
     )
   `);
 
-  // Offline-first sync columns
-  try {
-    await db.run(`ALTER TABLE journals ADD COLUMN updated_at INTEGER`);
-  } catch (e) {}
-  try {
-    await db.run(`ALTER TABLE journals ADD COLUMN client_uuid TEXT`);
-  } catch (e) {}
-  try {
-    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`);
-  } catch (e) {}
-  try {
-    await db.run(`ALTER TABLE journals ADD COLUMN deleted_at INTEGER`);
-  } catch (e) {}
-  try {
-    await db.run(`UPDATE journals SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`);
-  } catch (e) {}
-  try {
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`);
-  } catch (e) {}
+  // Offline-first sync: journals
+  await migrate(`ALTER TABLE journals ADD COLUMN updated_at INTEGER`, 'journals.updated_at');
+  await migrate(`ALTER TABLE journals ADD COLUMN client_uuid TEXT`, 'journals.client_uuid');
+  await migrate(`CREATE UNIQUE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`, 'journals.idx_client_uuid (unique)');
+  await migrate(`ALTER TABLE journals ADD COLUMN deleted_at INTEGER`, 'journals.deleted_at');
+  await migrate(`UPDATE journals SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`, 'journals.backfill updated_at');
+  await migrate(`CREATE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`, 'journals.idx_client_uuid');
 }
 
 export default db;

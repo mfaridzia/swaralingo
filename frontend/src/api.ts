@@ -107,7 +107,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   const offlineMode = getOfflineStore().offlineModeEnabled;
   const isOnlineOnly = shouldBypassInterceptor(path);
 
-  // --- Offline mode: intercept GET (read from Dexie) ---
+  // --- Offline mode: intercept GET (read from Dexie when actually offline) ---
   if (offline && offlineMode && !isOnlineOnly && (fetchOptions.method || 'GET') === 'GET') {
     const table = getReadTable(path);
     if (table) {
@@ -135,8 +135,8 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
     }
   }
 
-  // --- Offline mode: intercept POST/PUT/DELETE (queue mutation) ---
-  if (offline && offlineMode && !isOnlineOnly && (fetchOptions.method || '').toUpperCase() !== 'GET' && path !== '/audio') {
+  // --- Offline mode: intercept POST/PUT/DELETE (always queue locally, sync pushes in background) ---
+  if (offlineMode && !isOnlineOnly && (fetchOptions.method || '').toUpperCase() !== 'GET' && path !== '/audio') {
     const method = (fetchOptions.method || 'POST').toUpperCase();
     const body = fetchOptions.body ? JSON.parse(fetchOptions.body as string) : {};
     const table = getReadTable(path);
