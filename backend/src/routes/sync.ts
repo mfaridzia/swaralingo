@@ -126,6 +126,13 @@ syncRouter.post('/', async (c) => {
         if (!clean['created_at']) {
           clean['created_at'] = new Date().toISOString().replace('T', ' ').slice(0, 19);
         }
+        // Chunk-specific defaults (offline mutations may omit SRS fields)
+        if (mut.table === 'chunks') {
+          if (!clean['next_review_at']) clean['next_review_at'] = clean['created_at'];
+          if (clean['interval'] == null) clean['interval'] = 0;
+          if (clean['repetition'] == null) clean['repetition'] = 0;
+          if (clean['easiness'] == null) clean['easiness'] = 2.5;
+        }
 
         if (mut.operation === 'insert') {
           // Idempotent: check if client_uuid already exists
