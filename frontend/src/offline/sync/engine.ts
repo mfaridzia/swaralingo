@@ -183,7 +183,13 @@ export async function enqueueMutation(
   data: Record<string, unknown>,
   audioBlobId?: number,
 ): Promise<string> {
-  const clientId = crypto.randomUUID();
+  const dataClientId = (data.clientId || data.client_uuid || data.clientUuid || data.id) as string | undefined;
+  const clientId = operation === 'insert' ? (dataClientId || crypto.randomUUID()) : dataClientId;
+
+  if (!clientId) {
+    throw new Error(`clientId is required for ${operation} operations`);
+  }
+
   const clientUpdatedAt = Date.now();
   // Normalize camelCase → snake_case for logs table
   const cleanData = table === 'logs' ? normalizeLogData(data) : data;
@@ -206,7 +212,10 @@ export async function enqueueMutation(
       else if (table === 'journals') await db.journals.put(record as any);
     } else if (operation === 'update') {
       const dexieTable = table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals;
-      (dexieTable.where('clientId').equals(clientId) as any).modify({ ...cleanData, updatedAt: clientUpdatedAt, synced: false } as any);
+      await (dexieTable.where('clientId').equals(clientId) as any).modify({ ...cleanData, updatedAt: clientUpdatedAt, synced: false } as any);
+    } else if (operation === 'delete') {
+      const dexieTable = table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals;
+      await dexieTable.where('clientId').equals(clientId).delete();
     }
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') {

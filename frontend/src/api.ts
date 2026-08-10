@@ -1,7 +1,7 @@
 import { API_URL } from './config';
 import { db } from './offline/db/dexie';
 import { enqueueMutation } from './offline/sync/engine';
-import { getOfflineStore } from './offline/store';
+import { getOfflineStore, isOnline } from './offline/store';
 
 // Session auth via HttpOnly cookie (SameSite=None; Secure; Partitioned) — XSS tidak bisa baca token.
 // credentials: 'include' agar cookie terkirim cross-site (vercel.app → workers.dev).
@@ -142,10 +142,9 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   const { skipAuthRedirect = false, ...fetchOptions } = options;
   const offlineMode = getOfflineStore().offlineModeEnabled;
   const isOnlineOnly = shouldBypassInterceptor(path);
+  const reqMethod = (fetchOptions.method || 'GET').toUpperCase();
 
-  // --- Offline mode: intercept GET (always read from Dexie, even when browser online) ---
-  // React Query refetch would hit server without offline entry → cache overwritten.
-  if (offlineMode && !isOnlineOnly && (fetchOptions.method || 'GET') === 'GET') {
+  const serveGetFromDexie = async () => {
     const table = getReadTable(path);
     if (table) {
       const records = await (table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals)
@@ -164,22 +163,54 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
           headers: { 'Content-Type': record.contentType },
         });
       }
-      // Audio not cached locally — return 503
       return new Response(JSON.stringify({ success: false, error: 'Audio not available offline' }), {
         status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    throw new Error('Not found in Dexie');
+  };
+
+  // --- Offline mode: intercept GET (read from Dexie ONLY when offline) ---
+  if (offlineMode && !isOnlineOnly && reqMethod === 'GET' && !isOnline()) {
+    try {
+      return await serveGetFromDexie();
+    } catch {
+      // Fall through to online if serveGetFromDexie fails
+    }
   }
 
   // --- Offline mode: intercept POST/PUT/DELETE (always queue locally, sync pushes in background) ---
-  const reqMethod = (fetchOptions.method || 'GET').toUpperCase();
   if (offlineMode && !isOnlineOnly && (reqMethod === 'POST' || reqMethod === 'PUT' || reqMethod === 'DELETE') && path !== '/audio') {
-    const body = fetchOptions.body ? JSON.parse(fetchOptions.body as string) : {};
+    let body: Record<string, unknown> = {};
+    try {
+      body = fetchOptions.body ? JSON.parse(fetchOptions.body as string) : {};
+    } catch {
+      // Ignored
+    }
     const table = getReadTable(path);
 
     if (table) {
       const operation = reqMethod === 'DELETE' ? 'delete' : reqMethod === 'PUT' ? 'update' : 'insert';
+      
+      // Determine clientId for update or delete
+      if (operation === 'update' || operation === 'delete') {
+        if (!body.clientId && !body.client_uuid && !body.clientUuid && !body.id) {
+          const pathSegments = path.split('?')[0].split('/');
+          const lastSegment = pathSegments[pathSegments.length - 1];
+          const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+          if (uuidRegex.test(lastSegment)) {
+            body.clientId = lastSegment;
+          } else {
+            const urlParams = new URLSearchParams(path.split('?')[1] || '');
+            const idParam = urlParams.get('id') || urlParams.get('clientId') || urlParams.get('client_uuid') || urlParams.get('clientUuid');
+            if (idParam) {
+              body.clientId = idParam;
+            }
+          }
+        }
+      }
+
       // Inject defaults for inserts (mutation body may omit these)
       if (operation === 'insert') {
         if (!body.created_at && !body.createdAt) body.created_at = new Date().toISOString();
@@ -201,30 +232,42 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   }
 
   // --- Online path (or online-only endpoint, or offline mode disabled) ---
-  const res = await fetch(`${API_URL}${path}`, { ...fetchOptions, credentials: 'include' });
+  try {
+    const res = await fetch(`${API_URL}${path}`, { ...fetchOptions, credentials: 'include' });
 
-  if (res.status === 401 && !skipAuthRedirect) {
-    clearAuth();
-    if (window.location.pathname !== '/') window.location.href = '/';
-    throw new Error('Session expired. Please sign in again.');
-  }
+    if (res.status === 401 && !skipAuthRedirect) {
+      clearAuth();
+      if (window.location.pathname !== '/') window.location.href = '/';
+      throw new Error('Session expired. Please sign in again.');
+    }
 
-  // Write-through cache: on successful online GET, cache in Dexie
-  if (res.ok && (fetchOptions.method || 'GET') === 'GET' && offlineMode && !isOnlineOnly) {
-    const table = getReadTable(path);
-    if (table) {
-      try {
-        const cloned = res.clone();
-        const json = await cloned.json();
-        const userId = JSON.parse(localStorage.getItem('fluency_user') || '{}').id;
-        if (userId) {
-          await cacheGetResponse(table, userId, json);
+    // Write-through cache: on successful online GET, cache in Dexie
+    if (res.ok && reqMethod === 'GET' && offlineMode && !isOnlineOnly) {
+      const table = getReadTable(path);
+      if (table) {
+        try {
+          const cloned = res.clone();
+          const json = await cloned.json();
+          const userId = JSON.parse(localStorage.getItem('fluency_user') || '{}').id;
+          if (userId) {
+            await cacheGetResponse(table, userId, json);
+          }
+        } catch {
+          // Cache write failed — non-critical
         }
-      } catch {
-        // Cache write failed — non-critical, response still works
       }
     }
-  }
 
-  return res;
+    return res;
+  } catch (err) {
+    if (offlineMode && !isOnlineOnly && reqMethod === 'GET') {
+      try {
+        return await serveGetFromDexie();
+      } catch {
+        // Fall through
+      }
+    }
+    throw err;
+  }
+}
 }
