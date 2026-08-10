@@ -235,21 +235,29 @@ function MainAppLayout({
     // Offline mode: queue locally instead of posting to server
     const offlineStore = (await import('./offline/store')).getOfflineStore();
     if (offlineStore.offlineModeEnabled) {
-      const { enqueueMutation, enqueueAudio } = await import('./offline/sync/engine');
-      let audioBlobId: number | undefined;
-      if (audioBlob) {
-        audioBlobId = await enqueueAudio(audioBlob);
+      try {
+        const { enqueueMutation, enqueueAudio } = await import('./offline/sync/engine');
+        let audioBlobId: number | undefined;
+        if (audioBlob) {
+          audioBlobId = await enqueueAudio(audioBlob);
+        }
+        await enqueueMutation('logs', 'insert', {
+          user_input: userInput,
+          ai_feedback: aiFeedback,
+          improved_version: improvedVersion,
+          userId: activeUser?.id,
+          created_at: new Date().toISOString(),
+        }, audioBlobId);
+        // Clear form (optimistic)
+        setUserInput('');
+        setImprovedVersion('');
+        setAiFeedback('');
+        // Refresh UI from local Dexie + trigger sync if online
+        queryClient.invalidateQueries({ queryKey: ['logs', activeUser?.id] });
+        queryClient.invalidateQueries({ queryKey: ['stats', activeUser?.id] });
+      } catch (err: any) {
+        setApiErrorMsg(err?.message || 'Failed to save offline. Storage may be full.');
       }
-      await enqueueMutation('logs', 'insert', {
-        user_input: userInput,
-        ai_feedback: aiFeedback,
-        improved_version: improvedVersion,
-        userId: activeUser?.id,
-      }, audioBlobId);
-      // Clear form (optimistic)
-      setUserInput('');
-      setImprovedVersion('');
-      setAiFeedback('');
       return;
     }
 

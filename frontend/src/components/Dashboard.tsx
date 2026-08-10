@@ -106,7 +106,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setGeneratedChallenge('');
 
     try {
-      const logs = logsData?.data || [];
+      const logs = Array.isArray(logsData?.data) ? logsData.data : [];
       // Extract latest 5 entries with corrections to feed into context
       const mistakesContext = logs
         .filter(l => l.ai_feedback && !l.ai_feedback.includes("grammatically correct"))
@@ -460,7 +460,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       const dateString = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(cellDate.getDate()).padStart(2, '0')}`;
                       
                       // Filter logs for this specific cell date
-                      const logs = logsData?.data || [];
+                      const logs = Array.isArray(logsData?.data) ? logsData.data : [];
                       const mistakesForDay = logs.filter(log => {
                         const dbDate = new Date(log.created_at);
                         const dbDateString = `${dbDate.getFullYear()}-${String(dbDate.getMonth() + 1).padStart(2, '0')}-${String(dbDate.getDate()).padStart(2, '0')}`;

@@ -234,13 +234,15 @@ export const SavedRecords: React.FC<SavedRecordsProps> = ({
   };
 
   // Filter logs and chunks based on search query (case-insensitive)
-  const filteredLogs = (logs?.data || []).filter(log => 
+  const logsArray = Array.isArray(logs?.data) ? logs.data : [];
+  const filteredLogs = logsArray.filter(log =>
     log.user_input.toLowerCase().includes(searchQuery.toLowerCase()) ||
     log.improved_version.toLowerCase().includes(searchQuery.toLowerCase()) ||
     log.ai_feedback.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredChunks = (chunks?.data || []).filter(chunk => 
+  const chunksArray = Array.isArray(chunks?.data) ? chunks.data : [];
+  const filteredChunks = chunksArray.filter(chunk => 
     chunk.phrase.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chunk.meaning.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chunk.example.toLowerCase().includes(searchQuery.toLowerCase())

@@ -143,6 +143,25 @@ export async function syncNow(): Promise<void> {
   }
 }
 
+// Normalize camelCase keys to snake_case for Dexie storage
+const LOGS_KEY_MAP: Record<string, string> = {
+  userInput: 'user_input',
+  aiFeedback: 'ai_feedback',
+  improvedVersion: 'improved_version',
+  audioKey: 'audio_key',
+  audioBase64: 'audio_base64',
+  mistakeCategory: 'mistake_category',
+};
+
+function normalizeLogData(data: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const mapped = LOGS_KEY_MAP[key] || key;
+    normalized[mapped] = value;
+  }
+  return normalized;
+}
+
 /**
  * Enqueue a mutation to the pendingSync table and write optimistically to the local Dexie table.
  */
@@ -154,14 +173,16 @@ export async function enqueueMutation(
 ): Promise<string> {
   const clientId = crypto.randomUUID();
   const clientUpdatedAt = Date.now();
+  // Normalize camelCase → snake_case for logs table
+  const cleanData = table === 'logs' ? normalizeLogData(data) : data;
 
   try {
     // Write optimistically to local table
     if (operation === 'insert') {
       const record = {
         clientId,
-        userId: data.userId as number,
-        ...data,
+        userId: cleanData.userId as number,
+        ...cleanData,
         updatedAt: clientUpdatedAt,
         synced: false,
       };
@@ -170,7 +191,7 @@ export async function enqueueMutation(
       else if (table === 'journals') await db.journals.put(record as any);
     } else if (operation === 'update') {
       const dexieTable = table === 'logs' ? db.logs : table === 'chunks' ? db.chunks : db.journals;
-      (dexieTable.where('clientId').equals(clientId) as any).modify({ ...data, updatedAt: clientUpdatedAt, synced: false } as any);
+      (dexieTable.where('clientId').equals(clientId) as any).modify({ ...cleanData, updatedAt: clientUpdatedAt, synced: false } as any);
     }
   } catch (err: unknown) {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') {
@@ -179,12 +200,12 @@ export async function enqueueMutation(
     throw err;
   }
 
-  // Queue for sync
+  // Queue for sync (store cleanData so server receives correct keys)
   await db.pendingSync.put({
     table,
     operation,
     clientId,
-    data,
+    data: cleanData,
     clientUpdatedAt,
     retries: 0,
     status: 'pending',
