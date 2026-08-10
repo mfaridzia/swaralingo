@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { BookMarked, Download, Search, FileText, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { apiFetch } from '../api';
@@ -33,14 +34,25 @@ interface SavedRecordsProps {
   userId: number;
 }
 
+function deriveTab(pathname: string): SavedRecordsProps['activeTab'] {
+  if (pathname === '/dashboard/chunks') return 'chunks';
+  if (pathname === '/dashboard/stats') return 'stats';
+  if (pathname === '/dashboard/settings') return 'settings';
+  if (pathname === '/dashboard/simulator') return 'simulator';
+  if (pathname === '/dashboard/journal') return 'journal';
+  return 'diary';
+}
+
 export const SavedRecords: React.FC<SavedRecordsProps> = ({
-  activeTab,
+  activeTab: _activeTabProp,
   logs,
   loadingLogs,
   chunks,
   loadingChunks,
   userId,
 }) => {
+  const location = useLocation();
+  const activeTab = deriveTab(location.pathname);
   const [searchQuery, setSearchQuery] = useState('');
   const [transcribingLogId, setTranscribingLogId] = useState<number | null>(null);
   const [transcriptions, setTranscriptions] = useState<{ [logId: number]: string }>({});
