@@ -6,6 +6,7 @@ import { ShieldAlert } from 'lucide-react';
 
 // Import refactored reusable components
 import { Navbar } from './components/Navbar';
+import { SyncBanner } from './offline/indicator';
 import { PracticeDiary } from './components/PracticeDiary';
 import { SentenceChunks } from './components/SentenceChunks';
 import { Dashboard } from './components/Dashboard';
@@ -230,7 +231,29 @@ function MainAppLayout({
 
   const handleSaveLog = async (audioBlob?: Blob | null) => {
     if (!userInput || !improvedVersion || !aiFeedback) return;
-    // Upload audio ke R2 (atau storage lokal di dev) dulu, simpan referensi key di log
+
+    // Offline mode: queue locally instead of posting to server
+    const offlineStore = (await import('./offline/store')).getOfflineStore();
+    if (offlineStore.offlineModeEnabled && !navigator.onLine) {
+      const { enqueueMutation, enqueueAudio } = await import('./offline/sync/engine');
+      let audioBlobId: number | undefined;
+      if (audioBlob) {
+        audioBlobId = await enqueueAudio(audioBlob);
+      }
+      await enqueueMutation('logs', 'insert', {
+        user_input: userInput,
+        ai_feedback: aiFeedback,
+        improved_version: improvedVersion,
+        userId: activeUser?.id,
+      }, audioBlobId);
+      // Clear form (optimistic)
+      setUserInput('');
+      setImprovedVersion('');
+      setAiFeedback('');
+      return;
+    }
+
+    // Online path: existing behavior
     let audioKey: string | null = null;
     if (audioBlob) {
       try {
@@ -265,7 +288,8 @@ function MainAppLayout({
 
   return (
     <div className="min-h-screen bg-[#09090b]">
-      <Navbar 
+      <SyncBanner />
+      <Navbar
         activeTab={activeTab}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
