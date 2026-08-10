@@ -81,17 +81,20 @@ const TOKEN_MAX_AGE = TOKEN_TTL_SECONDS;
 
 // Secure selalu ON (prod HTTPS; dev http://localhost diperlakukan browser sebagai secure context).
 // SameSite=None wajib karena FE (vercel.app) dan API (workers.dev) beda site — CSRF ditangani csrfProtect.
+// Partitioned (CHIPS): Chrome/Edge/Firefox memblokir third-party cookie non-partitioned (rollout 2025) —
+// tanpa ini fetch cross-site vercel.app → workers.dev tidak membawa cookie → 401 tiap request.
+// Catatan: Safari (ITP) tidak mendukung Partitioned — user Safari tetap terblokir, belum ada solusi selain same-site hosting.
 export function setAuthCookie(c: Context, userId: number): Promise<void> {
   return signToken(userId).then((token) => {
     c.header(
       'Set-Cookie',
-      `${AUTH_COOKIE}=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${TOKEN_MAX_AGE}`
+      `${AUTH_COOKIE}=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${TOKEN_MAX_AGE}; Partitioned`
     );
   });
 }
 
 export function clearAuthCookie(c: Context): void {
-  c.header('Set-Cookie', `${AUTH_COOKIE}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`);
+  c.header('Set-Cookie', `${AUTH_COOKIE}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0; Partitioned`);
 }
 
 function getCookieToken(c: Context): string {

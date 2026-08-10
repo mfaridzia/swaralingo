@@ -82,7 +82,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           theme: 'dark', 
           size: 'large', 
           width: buttonWidth, 
-          text: 'signin_with',
+          text: isLogin ? 'signin_with' : 'signup_with',
           shape: 'pill'
         }
       );
@@ -94,7 +94,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     setErrorMsg("");
     setIsLoading(true);
 
-    if (password.length < 6) {
+    // Validasi panjang password hanya untuk register — login tidak boleh menolak password lama yang valid
+    if (!isLogin && password.length < 6) {
       setErrorMsg("Password minimal harus 6 karakter.");
       setIsLoading(false);
       return;
