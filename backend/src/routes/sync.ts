@@ -37,10 +37,37 @@ const TABLE_CONFIG: Record<string, { table: string; columns: string[] }> = {
   },
 };
 
+// CamelCase → snake_case fallback map (frontend may send either format)
+const KEY_ALIASES: Record<string, string[]> = {
+  user_input: ['userInput'],
+  ai_feedback: ['aiFeedback'],
+  improved_version: ['improvedVersion'],
+  audio_key: ['audioKey'],
+  audio_base64: ['audioBase64'],
+  mistake_category: ['mistakeCategory'],
+  next_review_at: ['nextReviewAt'],
+  created_at: ['createdAt'],
+  updated_at: ['updatedAt'],
+  client_uuid: ['clientUuid', 'client_uuid'],
+};
+
 function whitelistData(data: Record<string, unknown>, allowed: string[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const key of allowed) {
-    if (key in data) out[key] = data[key];
+    if (key in data) {
+      out[key] = data[key];
+    } else {
+      // Try camelCase aliases
+      const aliases = KEY_ALIASES[key];
+      if (aliases) {
+        for (const alias of aliases) {
+          if (alias in data && alias !== key) {
+            out[key] = data[alias];
+            break;
+          }
+        }
+      }
+    }
   }
   return out;
 }
