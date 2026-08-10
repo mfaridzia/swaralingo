@@ -191,6 +191,10 @@ journalsRouter.post('/stream', async (c) => {
         });
       }
     }
+    const origin = (c.env as any)?.CORS_ORIGIN || 'http://localhost:5173';
+    c.header('Access-Control-Allow-Origin', origin);
+    c.header('Access-Control-Allow-Credentials', 'true');
+    c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     return streamSSE(c, async (stream) => {
       let detectedMood = 'Neutral';
