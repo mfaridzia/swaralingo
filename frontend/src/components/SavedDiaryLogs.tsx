@@ -187,7 +187,12 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
     URL.revokeObjectURL(a.href);
   };
 
-  const logsArray = Array.isArray(logs?.data) ? logs.data : [];
+  const logsArray = Array.isArray(logs?.data) ? [...logs.data] : [];
+  logsArray.sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeB - timeA;
+  });
   const filteredLogs = logsArray.filter(log =>
     (log.user_input || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (log.improved_version || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
