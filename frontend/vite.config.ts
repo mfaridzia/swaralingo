@@ -33,6 +33,7 @@ export default defineConfig({
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [], // API caching intentionally excluded — Dexie owns it
+        importScripts: ['/sw-push.js'],
       },
       devOptions: {
         enabled: false, // SW only in production builds

@@ -12,6 +12,7 @@ import journalsRouter from './routes/journals.js';
 import audioRouter from './routes/audio.js';
 import transcribeRouter from './routes/transcribe.js';
 import syncRouter from './routes/sync.js';
+import notificationsRouter, { triggerDailyReminders } from './routes/notifications.js';
 
 import { initDB } from './database.js';
 import { csrfProtect } from './middleware/auth.js';
@@ -44,7 +45,7 @@ app.use('*', csrfProtect);
 app.use('*', securityHeaders);
 
 app.use('/*', (c, next) => {
-  const origin = c.env?.CORS_ORIGIN || CORS_ORIGIN;
+  const origin = (c.env as any)?.CORS_ORIGIN || CORS_ORIGIN;
   const corsMiddleware = cors({
     origin,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -63,8 +64,18 @@ app.route('/api/journals', journalsRouter);
 app.route('/api/audio', audioRouter);
 app.route('/api/transcribe', transcribeRouter);
 app.route('/api/sync', syncRouter);
+app.route('/api/notifications', notificationsRouter);
 
 export default {
   port: PORT,
   fetch: app.fetch,
+  async scheduled(event: any, env: any, ctx: any) {
+    // Populate process.env with CF Worker variables so process.env reads Turso DB details
+    for (const [key, value] of Object.entries(env || {})) {
+      if (typeof value === 'string') {
+        process.env[key] = value;
+      }
+    }
+    ctx.waitUntil(triggerDailyReminders());
+  }
 };

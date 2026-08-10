@@ -257,20 +257,123 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
     localStorage.setItem(`alarm_time_${user.id}`, nextTime);
   };
 
-  const saveAlarmSettings = () => {
-    localStorage.setItem(`alarm_enabled_${user.id}`, String(isAlarmEnabled));
-    localStorage.setItem(`alarm_time_${user.id}`, alarmTime);
+  const convertLocalToUTC = (localTime: string): string => {
+    const [hours, minutes] = localTime.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    const utcHours = date.getUTCHours().toString().padStart(2, '0');
+    const utcMinutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${utcHours}:${utcMinutes}`;
+  };
 
-    if (isAlarmEnabled) {
-      playChimeSound();
-      triggerNotificationDirectly(
-        'SwaraLingo - Reminder Configured! 🔔',
-        `Your daily practice alarm is set for ${alarmTime}.`
-      );
+  const subscribeToPush = async (timeUTC: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('Push messaging is not supported in this browser');
+      return;
+    }
+    
+    // Request permission explicitly first
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      throw new Error('Izin notifikasi ditolak oleh pengguna.');
     }
 
-    setSuccessMsg('Pengingat harian berhasil disimpan!');
-    setTimeout(() => setSuccessMsg(''), 3000);
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Get VAPID public key
+    const keyRes = await apiFetch('/notifications/vapid-public-key');
+    const keyJson = await keyRes.json();
+    if (!keyJson.success || !keyJson.publicKey) {
+      throw new Error('Gagal mendapatkan VAPID public key dari server.');
+    }
+
+    // Helper to convert VAPID key
+    const urlBase64ToUint8Array = (base64String: string) => {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    };
+
+    // Unsubscribe existing first to avoid duplicate bindings
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      await existingSub.unsubscribe();
+    }
+
+    // Subscribe user
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyJson.publicKey),
+    });
+
+    // Save subscription info to backend
+    const subscribeRes = await apiFetch('/notifications/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscription,
+        alarmTime: timeUTC,
+      }),
+    });
+    const subscribeJson = await subscribeRes.json();
+    if (!subscribeJson.success) {
+      throw new Error(subscribeJson.error || 'Gagal menyimpan subskripsi push di server.');
+    }
+  };
+
+  const unsubscribeFromPush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        // Delete on backend
+        await apiFetch('/notifications/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        });
+        // Unsubscribe on browser
+        await subscription.unsubscribe();
+      }
+    } catch (e) {
+      console.error('Failed to unsubscribe from Web Push:', e);
+    }
+  };
+
+  const saveAlarmSettings = async () => {
+    setSuccessMsg('');
+    setErrorMsg('');
+    setIsUpdating(true);
+
+    try {
+      localStorage.setItem(`alarm_enabled_${user.id}`, String(isAlarmEnabled));
+      localStorage.setItem(`alarm_time_${user.id}`, alarmTime);
+
+      if (isAlarmEnabled) {
+        const utcTime = convertLocalToUTC(alarmTime);
+        await subscribeToPush(utcTime);
+        playChimeSound();
+        triggerNotificationDirectly(
+          'SwaraLingo - Reminder Configured! 🔔',
+          `Your daily practice alarm is set for ${alarmTime} (Push enabled).`
+        );
+      } else {
+        await unsubscribeFromPush();
+      }
+
+      setSuccessMsg('Pengingat harian berhasil disimpan!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Gagal mengonfigurasi push notification.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (

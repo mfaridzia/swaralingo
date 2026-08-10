@@ -237,6 +237,20 @@ export async function initDB() {
   await migrate(`ALTER TABLE journals ADD COLUMN deleted_at INTEGER`, 'journals.deleted_at');
   await migrate(`UPDATE journals SET updated_at = (strftime('%s', created_at) * 1000) WHERE updated_at IS NULL`, 'journals.backfill updated_at');
   await migrate(`CREATE INDEX IF NOT EXISTS idx_journals_client_uuid ON journals(client_uuid)`, 'journals.idx_client_uuid');
+
+  // 6. Buat tabel push_subscriptions
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      alarm_time TEXT DEFAULT '19:00',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
 }
 
 export default db;

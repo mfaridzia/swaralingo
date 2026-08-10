@@ -12,7 +12,7 @@ export const PORT = process.env.PORT || 3000;
 export function getEnvVar(key: string): string {
   try {
     const c = getContext();
-    return c.env[key] || process.env[key] || '';
+    return (c.env as any)[key] || process.env[key] || '';
   } catch (e) {
     return process.env[key] || '';
   }
