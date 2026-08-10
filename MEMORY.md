@@ -103,11 +103,23 @@
 
 ## 🐛 Known Issues & Technical Debts
 
-- None.
+- Safari Partitioned cookie workaround (CHIPS not supported by Safari ITP) — host FE + API on same domain.
+
+## 📋 Backlog (Slice 2+)
+
+| # | Item | Effort | Dependencies |
+|---|---|---|---|
+| 1 | **Chunks (SRS) offline** — schema & pendingSync table sudah siap; perlu route-map entries di `POST /api/sync` + interceptor write-queue untuk tabel `chunks` | S | Slice 1 |
+| 2 | **Journals offline** — sama seperti chunks, schema siap, perlu route-map + interceptor | S | Slice 1 |
+| 3 | **Offline audio playback** — blob URL dari Dexie `audioBlobs` untuk putar rekaman saat offline | M | Slice 1 |
+| 4 | **Multi-device conflict UI** — tampilkan konflik ke user (saat ini server version menang otomatis via LWW) | M | Slice 1 |
+| 5 | **Background Sync API** — `navigator.sync.register()` agar sync jalan meski tab tertutup | L | Slice 1, PWA terinstall |
+| 6 | **Safari same-domain hosting** — atasi CHIPS Partitioned cookie tidak didukung Safari; FE + API satu domain | M | Infra |
+| 7 | **Offline Gemini** — WebLLM atau model on-device untuk grammar check offline (riset dulu) | XL | Riset |
 
 ## 🎯 Next Immediate Steps
-- [x] ~~**Vertical slice: offline diary flow**~~ — Dexie schema + `apiFetch` interceptor + `POST /api/sync` endpoint + UI sync indicator. Single end-to-end path: write diary offline → reconnect → auto-sync. ✅ Complete (Phases 0-6).
+- [x] ~~**Vertical slice: offline diary flow**~~ — Dexie schema + `apiFetch` interceptor + `POST /api/sync` endpoint + UI sync indicator. ✅ Complete (Phases 0-6).
 - [x] ~~**vite-plugin-pwa setup**~~ — service worker + manifest + CSP headers. App installable. ✅ Complete.
-- [ ] Expand offline coverage: chunks (SRS), journals, audio recordings (schema ready, just add route-map entries in sync endpoint).
-- [ ] Playwright E2E: offline diary → online sync (test file created at `frontend/e2e/offline-sync.spec.ts`, pending server setup for run).
-- [ ] Safari Partitioned cookie workaround (CHIPS not supported by Safari ITP) — host FE + API on same domain.
+- [x] ~~**Playwright E2E**~~ — 4 test: offline diary→sync, toggle-off regression, Settings panel, diary+audio→sync. All passing. ✅
+- [ ] Deploy backend: `GET /api/init-db` on production Workers URL → `wrangler deploy`.
+- [ ] Merge PR `feature/offline-first-pwa-slice-1` → `main`.
