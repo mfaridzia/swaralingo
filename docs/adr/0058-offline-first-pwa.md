@@ -33,3 +33,31 @@ SwaraLingo currently requires a persistent network connection for all features �
 - **New Playwright E2E tests** for offline diary → online sync flow
 - **New Vitest unit tests** with `fake-indexeddb` for Dexie operations and sync queue logic
 - **No user-facing breaking changes** — offline mode is opt-in toggle. Existing online-only behavior preserved when toggle is off
+
+## Sync Workflow
+
+```mermaid
+sequenceDiagram
+    participant UI as React UI (State)
+    participant DB as Dexie (IndexedDB)
+    participant Sync as Sync Engine
+    participant API as Server (Turso)
+
+    Note over UI,API: Alur READ (Stale-While-Revalidate)
+    UI->>DB: 1. Request data (logs/chunks)
+    DB-->>UI: 2. Return data lokal secara instan (UX Cepat)
+    UI->>Sync: 3. Trigger background fetch (jika online)
+    Sync->>API: 4. Fetch data terbaru
+    API-->>Sync: 5. Return data terbaru
+    Sync->>DB: 6. Update local Dexie (Write-Through)
+    DB-->>UI: 7. Kirim event update -> UI re-render otomatis
+
+    Note over UI,API: Alur WRITE (Optimistic & Background Sync)
+    UI->>DB: 1. Simpan diary baru
+    DB-->>UI: 2. Sukses disimpan lokal -> Tampilan langsung berubah
+    DB->>DB: 3. Masukkan ke tabel 'pendingSync'
+    Sync->>API: 4. Kirim batch mutasi (Push)
+    API-->>Sync: 5. Response sukses / konflik resolved
+    Sync->>DB: 6. Hapus dari antrean 'pendingSync'
+```
+
