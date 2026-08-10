@@ -78,11 +78,12 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
   // Find existing records by clientId so we upsert (not blind insert → duplicates)
   const clientIds = rows.map(r => r.client_uuid || `server-${r.id}`);
   const existing = await dexieTable.where('clientId').anyOf(clientIds).toArray();
-  const localIdByClient = new Map(existing.map(r => [r.clientId, r.localId]));
+  const existingByClient = new Map(existing.map(r => [r.clientId, r]));
 
   const records = rows.map(row => {
     const clientId = row.client_uuid || `server-${row.id}`;
-    const localId = localIdByClient.get(clientId); // undefined if new → Dexie auto-generates
+    const prev = existingByClient.get(clientId);
+    const localId = prev?.localId; // undefined if new → Dexie auto-generates
     const base = {
       localId,
       clientId,
@@ -98,8 +99,9 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
         user_input: row.user_input,
         ai_feedback: row.ai_feedback,
         improved_version: row.improved_version,
-        audio_key: row.audio_key,
+        audio_key: row.audio_key || (prev as any)?.audio_key,
         audio_base64: row.audio_base64,
+        audioBlobId: (prev as any)?.audioBlobId, // preserve offline audio ref
         mistake_category: row.mistake_category,
         created_at: normalizeCreatedAt(row.created_at),
       };

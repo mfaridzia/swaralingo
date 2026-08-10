@@ -119,12 +119,23 @@ function MainAppLayout({
     return () => window.removeEventListener('chunkAdded', handleRefetch);
   }, [queryClient, activeUser.id]);
 
-  // Listen to sync completion — refetch queries so UI shows newly synced data
+  // Listen to sync completion — read from Dexie & set cache directly.
+  // Avoid server refetch: Turso replica may lag behind the sync INSERT,
+  // causing the just-synced entry to disappear until next refresh.
   useEffect(() => {
-    const handleSynced = () => {
-      queryClient.invalidateQueries({ queryKey: ['logs', activeUser.id] });
-      queryClient.invalidateQueries({ queryKey: ['chunks', activeUser.id] });
-      queryClient.invalidateQueries({ queryKey: ['journals', activeUser.id] });
+    const handleSynced = async () => {
+      const { db } = await import('./offline/db/dexie');
+      const { dexieToApiLogs } = await import('./api');
+
+      const [allLogs, allChunks, allJournals] = await Promise.all([
+        db.logs.orderBy('updatedAt').reverse().toArray(),
+        db.chunks.orderBy('updatedAt').reverse().toArray(),
+        db.journals.orderBy('updatedAt').reverse().toArray(),
+      ]);
+
+      queryClient.setQueryData(['logs', activeUser.id], { success: true, data: dexieToApiLogs(allLogs) });
+      queryClient.setQueryData(['chunks', activeUser.id], { success: true, data: dexieToApiLogs(allChunks) });
+      queryClient.setQueryData(['journals', activeUser.id], { success: true, data: dexieToApiLogs(allJournals) });
       queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
     };
 
