@@ -144,11 +144,12 @@ function MainAppLayout({
   }, [queryClient, activeUser.id]);
 
   // Determine active tab class visually in Navbar based on current URL path
-  const getActiveTab = (): 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' => {
+  const getActiveTab = (): 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' | 'journal' => {
     if (location.pathname === '/dashboard/chunks') return 'chunks';
     if (location.pathname === '/dashboard/stats') return 'stats';
     if (location.pathname === '/dashboard/settings') return 'settings';
     if (location.pathname === '/dashboard/simulator') return 'simulator';
+    if (location.pathname === '/dashboard/journal') return 'journal';
     return 'diary';
   };
 
