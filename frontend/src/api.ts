@@ -130,7 +130,7 @@ async function cacheGetResponse(table: 'logs' | 'chunks' | 'journals', userId: n
     }
   });
 
-  await dexieTable.bulkPut(records);
+  await (dexieTable as any).bulkPut(records);
 }
 
 // Satu-satunya jalur request API: attach cookie + auto-logout saat sesi invalid/expired.
