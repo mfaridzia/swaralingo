@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BookMarked, Download, Search, FileText, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { apiFetch } from '../api';
-import { SyncDot } from '../offline/indicator';
 
 interface PracticeLog {
   id: number;
@@ -11,9 +10,7 @@ interface PracticeLog {
   improved_version: string;
   audio_base64?: string | null;
   audio_key?: string | null;
-  audioBlobId?: number;
   created_at: string;
-  client_uuid?: string;
 }
 
 interface SavedDiaryLogsProps {
@@ -36,19 +33,13 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
         const res = await apiFetch(`/audio/${log.audio_key}`);
         const blob = await res.blob();
         setAudioUrls(prev => ({ ...prev, [log.id]: URL.createObjectURL(blob) }));
-      } else if (log.audioBlobId) {
-        const { db } = await import('../offline/db/dexie');
-        const record = await db.audioBlobs.get(log.audioBlobId);
-        if (record?.blob) {
-          setAudioUrls(prev => ({ ...prev, [log.id]: URL.createObjectURL(record.blob) }));
-        }
       }
     } catch { /* ignored */ }
   };
 
   useEffect(() => {
     if (!Array.isArray(logs?.data)) return;
-    logs.data.forEach(log => { if (log.audio_key || (log as any).audioBlobId) loadAudioUrl(log); });
+    logs.data.forEach(log => { if (log.audio_key) loadAudioUrl(log); });
   }, [logs]);
 
   const downloadAudio = async (log: PracticeLog) => {
@@ -67,37 +58,14 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
       a.href = log.audio_base64;
       a.download = fileName;
       a.click();
-    } else if (log.audioBlobId) {
-      const { db } = await import('../offline/db/dexie');
-      const record = await db.audioBlobs.get(log.audioBlobId);
-      if (record?.blob) {
-        const url = URL.createObjectURL(record.blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
     }
   };
 
   const handleTranscribe = async (log: PracticeLog) => {
-    if (!log.audio_key && !log.audio_base64 && !log.audioBlobId) return;
+    if (!log.audio_key && !log.audio_base64) return;
     setTranscribingLogId(log.id);
     try {
-      let audioBase64 = log.audio_base64 || undefined;
-      if (!audioBase64 && log.audioBlobId) {
-        const { db } = await import('../offline/db/dexie');
-        const record = await db.audioBlobs.get(log.audioBlobId);
-        if (record?.blob) {
-          audioBase64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(record.blob);
-          });
-        }
-      }
+      const audioBase64 = log.audio_base64 || undefined;
       const res = await apiFetch('/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -252,7 +220,7 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
                 <span className="text-xs font-mono text-[#a1a1aa]">
                   {new Date(log.created_at).toLocaleDateString()}
                 </span>
-                {log.client_uuid ? <SyncDot clientId={log.client_uuid} /> : <span className="h-2 w-2 rounded-full bg-[#22c55e]" />}
+                <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
               </div>
               
               <div className="space-y-1">
@@ -265,7 +233,7 @@ export const SavedDiaryLogs: React.FC<SavedDiaryLogsProps> = ({ logs, loadingLog
                 <p className="text-xs font-medium text-[#4ade80] break-all">"{log.improved_version}"</p>
               </div>
 
-              {(log.audio_key || log.audio_base64 || log.audioBlobId) && (
+              {(log.audio_key || log.audio_base64) && (
                 <div className="space-y-2 border-t border-[#27272a]/60 pt-3 mt-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <audio

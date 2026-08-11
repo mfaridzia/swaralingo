@@ -11,7 +11,6 @@ import seedRouter from './routes/seed.js';
 import journalsRouter from './routes/journals.js';
 import audioRouter from './routes/audio.js';
 import transcribeRouter from './routes/transcribe.js';
-import syncRouter from './routes/sync.js';
 import notificationsRouter, { triggerDailyReminders } from './routes/notifications.js';
 
 import { initDB } from './database.js';
@@ -78,7 +77,6 @@ app.route('/api/seed', seedRouter);
 app.route('/api/journals', journalsRouter);
 app.route('/api/audio', audioRouter);
 app.route('/api/transcribe', transcribeRouter);
-app.route('/api/sync', syncRouter);
 app.route('/api/notifications', notificationsRouter);
 
 export default {

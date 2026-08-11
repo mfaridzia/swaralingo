@@ -21,7 +21,6 @@ const journalSubmitSchema = z.object({
   prompt: z.string().optional().nullable(),
   targetLanguage: z.string().optional(),
   content: z.string().min(5),
-  clientUuid: z.string().uuid().optional(),
 });
 
 // GET: Fetch all journal entries for a user
@@ -99,21 +98,9 @@ journalsRouter.post('/', async (c) => {
     }
 
     const userId = c.get('authUserId');
-    const { prompt = null, content, targetLanguage = 'English', clientUuid = null } = result.data;
+    const { prompt = null, content, targetLanguage = 'English' } = result.data;
     const nowMs = Date.now();
 
-    if (clientUuid) {
-      const existing = await db.query(
-        'SELECT id FROM journals WHERE client_uuid = ?'
-      ).get(clientUuid) as { id: number } | undefined;
-      if (existing) {
-        return c.json({
-          success: true,
-          data: { id: existing.id, user_id: userId, prompt, content, mood: 'Neutral', ai_reflection: '', created_at: new Date().toISOString() },
-        });
-      }
-    }
-    
     let detectedMood = 'Neutral';
     let aiReflection = 'Thank you for sharing your thoughts today. Keep practicing and journaling!';
 
@@ -158,9 +145,9 @@ Format your output strictly as a JSON object with these two fields:
 
     // Save to database
     const stmt = db.prepare(
-      'INSERT INTO journals (user_id, prompt, content, mood, ai_reflection, client_uuid, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO journals (user_id, prompt, content, mood, ai_reflection, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
     );
-    const info = await stmt.run(userId, prompt, content, detectedMood, aiReflection, clientUuid, nowMs);
+    const info = await stmt.run(userId, prompt, content, detectedMood, aiReflection, nowMs);
 
     return c.json({
       success: true,
@@ -189,24 +176,12 @@ journalsRouter.post('/stream', async (c) => {
     }
 
     const userId = c.get('authUserId');
-    const { prompt = null, content, targetLanguage = 'English', clientUuid = null } = result.data;
+    const { prompt = null, content, targetLanguage = 'English' } = result.data;
     const nowMs = Date.now();
 
     const apiKey = getEnvVar('GEMINI_API_KEY');
     if (!apiKey) {
       return c.json({ success: false, error: 'Gemini API Key is missing.' }, 500);
-    }
-
-    if (clientUuid) {
-      const existing = await db.query(
-        'SELECT * FROM journals WHERE client_uuid = ?'
-      ).get(clientUuid) as any | undefined;
-      if (existing) {
-        return c.json({
-          success: true,
-          data: existing
-        });
-      }
     }
     const origin = (c.env as any)?.CORS_ORIGIN || 'http://localhost:5173';
     c.header('Access-Control-Allow-Origin', origin);
@@ -279,9 +254,9 @@ Provide a warm, supportive, and motivating response in ${targetLanguage} reflect
       // Step C: Save entry in DB and send final details
       try {
         const stmt = db.prepare(
-          'INSERT INTO journals (user_id, prompt, content, mood, ai_reflection, client_uuid, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO journals (user_id, prompt, content, mood, ai_reflection, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
         );
-        const info = await stmt.run(userId, prompt, content, detectedMood, aiReflection, clientUuid, nowMs);
+        const info = await stmt.run(userId, prompt, content, detectedMood, aiReflection, nowMs);
 
         await stream.writeSSE({
           event: 'done',

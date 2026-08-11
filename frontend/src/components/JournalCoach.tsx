@@ -119,13 +119,6 @@ export const JournalCoach: React.FC = () => {
         prompt: isPromptedMode ? currentPrompt : null,
         content: journalContent,
         targetLanguage,
-        clientUuid: (typeof crypto !== 'undefined' && crypto.randomUUID)
-          ? crypto.randomUUID()
-          : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-              const r = Math.random() * 16 | 0;
-              const v = c === 'x' ? r : (r & 0x3 | 0x8);
-              return v.toString(16);
-            })
       };
 
       const response = await apiFetch('/journals/stream', {
@@ -173,8 +166,8 @@ export const JournalCoach: React.FC = () => {
                 const finalData = JSON.parse(dataVal) as JournalEntry;
                 setFinalResult(finalData);
                 setJournalContent("");
-                // Instantly update query state
-                queryClient.setQueryData(['journals', userId], (old: any) => {
+                // Instantly update query state (use full key matching the useQuery)
+                queryClient.setQueryData(['journals', userId, journalsLimit], (old: any) => {
                   const existing = old?.data || [];
                   return {
                     ...old,

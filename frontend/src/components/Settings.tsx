@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Lock, Save, ShieldAlert, Bell, BellOff, Wifi, WifiOff, Trash2, HardDrive } from 'lucide-react';
+import { User, Lock, Save, ShieldAlert, Bell, BellOff } from 'lucide-react';
 import { apiFetch } from '../api';
 import type { UserProfile } from './Auth';
 
@@ -67,46 +67,6 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
   const [alarmTime, setAlarmTime] = useState(() => {
     return localStorage.getItem(`alarm_time_${user.id}`) || '19:00';
   });
-
-  // Offline mode states (Temporarily disabled)
-  const [offlineModeEnabled, setOfflineModeEnabled] = useState(false);
-  const [storageEstimate, setStorageEstimate] = useState<{ usage: number; quota: number } | null>(null);
-  const [isClearing, setIsClearing] = useState(false);
-
-  const toggleOfflineMode = () => {
-    const next = !offlineModeEnabled;
-    setOfflineModeEnabled(next);
-    localStorage.setItem('swaralingo_offline_enabled', String(next));
-    // Reload to re-initialize sync triggers and store
-    window.location.reload();
-  };
-
-  const refreshStorageEstimate = async () => {
-    if ('storage' in navigator && 'estimate' in navigator.storage) {
-      const est = await navigator.storage.estimate();
-      setStorageEstimate({ usage: est.usage ?? 0, quota: est.quota ?? 0 });
-    }
-  };
-
-  const handleClearOfflineData = async () => {
-    if (!confirm('Clear all offline data? This cannot be undone.')) return;
-    setIsClearing(true);
-    try {
-      const { clearOfflineData } = await import('../offline/backfill');
-      await clearOfflineData();
-      setSuccessMsg('Offline data cleared.');
-      setTimeout(() => setSuccessMsg(''), 3000);
-      refreshStorageEstimate();
-    } catch (e: any) {
-      setErrorMsg(e?.message || 'Failed to clear offline data.');
-    } finally {
-      setIsClearing(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshStorageEstimate();
-  }, []);
 
   // Request browser notification permission explicitly
   const requestPermissionAndTest = () => {
@@ -553,73 +513,6 @@ export const Settings: React.FC<SettingsProps> = ({ user, onProfileUpdated }) =>
               <Save className="h-4 w-4" />
             </button>
           </div>
-        </div>
-
-        {/* Offline Mode Panel */}
-        <div className="glass-panel space-y-6 rounded-2xl p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Offline Mode <span className="text-xs text-yellow-500 font-semibold">(Temporarily Disabled)</span></h3>
-              <p className="text-xs text-[#a1a1aa]">Save diary entries locally when offline and sync automatically when back online.</p>
-            </div>
-            <button
-              type="button"
-              disabled
-              className="p-2.5 rounded-xl border bg-[#18181b] border-[#27272a] text-[#71717a] cursor-not-allowed"
-            >
-              <WifiOff className="h-5 w-5" />
-            </button>
-          </div>
-
-          {offlineModeEnabled && (
-            <div className="space-y-4 animate-fadeIn">
-              {/* Storage meter */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-[#a1a1aa]">
-                  <span className="flex items-center gap-1.5">
-                    <HardDrive className="h-3.5 w-3.5" />
-                    Local Storage
-                  </span>
-                  <button
-                    type="button"
-                    onClick={refreshStorageEstimate}
-                    className="text-[10px] underline hover:text-white transition-colors cursor-pointer"
-                  >
-                    Refresh
-                  </button>
-                </div>
-                {storageEstimate ? (
-                  <>
-                    <div className="w-full bg-[#18181b] rounded-full h-2 overflow-hidden border border-[#27272a]">
-                      <div
-                        className="h-full bg-[#22c55e] rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, (storageEstimate.usage / storageEstimate.quota) * 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-[#52525b]">
-                      {(storageEstimate.usage / 1024 / 1024).toFixed(1)} MB of{' '}
-                      {(storageEstimate.quota / 1024 / 1024).toFixed(0)} MB used
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[10px] text-[#52525b]">Storage API not available</p>
-                )}
-              </div>
-
-              {/* Clear offline data */}
-              <div className="border-t border-[#27272a]/50 pt-4">
-                <button
-                  type="button"
-                  onClick={handleClearOfflineData}
-                  disabled={isClearing}
-                  className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 hover:border-red-400/40 px-4 py-2.5 text-sm font-semibold text-red-400 hover:text-red-300 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {isClearing ? 'Clearing...' : 'Clear Offline Data'}
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </section>

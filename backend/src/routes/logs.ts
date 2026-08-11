@@ -47,7 +47,6 @@ const practiceLogSchema = z.object({
   improvedVersion: z.string().min(1),
   audioKey: z.string().nullable().optional(),
   audioBase64: z.string().nullable().optional(), // diterima dari client lama; tidak di-echo kembali
-  clientUuid: z.string().uuid().optional(),       // offline-first sync idempotency
 });
 
 logsRouter.post('/', async (c) => {
@@ -60,24 +59,12 @@ logsRouter.post('/', async (c) => {
     }
 
     const userId = c.get('authUserId');
-    const { userInput, aiFeedback, improvedVersion, audioKey = null, audioBase64 = null, clientUuid = null } = result.data;
+    const { userInput, aiFeedback, improvedVersion, audioKey = null, audioBase64 = null } = result.data;
     const nowMs = Date.now();
-    if (clientUuid) {
-      // Offline-first: idempotent insert — check if this client row already exists
-      const existing = await db.query(
-        'SELECT id FROM practice_logs WHERE client_uuid = ?'
-      ).get(clientUuid) as { id: number } | undefined;
-      if (existing) {
-        return c.json({
-          success: true,
-          data: { id: existing.id, userId, userInput, aiFeedback, improvedVersion, audioKey },
-        });
-      }
-    }
     const stmt = db.prepare(
-      'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_key, audio_base64, client_uuid, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO practice_logs (user_id, user_input, ai_feedback, improved_version, audio_key, audio_base64, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    const info = await stmt.run(userId, userInput, aiFeedback, improvedVersion, audioKey, audioBase64, clientUuid, nowMs);
+    const info = await stmt.run(userId, userInput, aiFeedback, improvedVersion, audioKey, audioBase64, nowMs);
 
     return c.json({
       success: true,

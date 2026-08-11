@@ -3,12 +3,25 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import './index.css'
-import { initSyncTriggers } from './offline/sync/triggers'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 5000),
+      staleTime: 60_000,
+      refetchOnWindowFocus: true,
+      networkMode: 'always',
+    },
+    mutations: {
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    },
+  },
+})
 
-// Error boundary: prevent blank screen on offline sync failures
-class OfflineErrorBoundary extends React.Component<
+// Error boundary: prevent blank screen on unexpected render errors
+class AppErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {
@@ -50,13 +63,10 @@ class OfflineErrorBoundary extends React.Component<
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <OfflineErrorBoundary>
+    <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
-    </OfflineErrorBoundary>
+    </AppErrorBoundary>
   </React.StrictMode>,
 )
-
-// Init offline sync triggers (online/visibility/periodic)
-initSyncTriggers();

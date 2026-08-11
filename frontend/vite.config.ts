@@ -9,8 +9,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon.svg', 'icons.svg'],
+      registerType: 'prompt', // Let us control when to update via useRegisterSW
+      includeAssets: ['favicon.svg', 'icon.svg'],
       manifest: {
         name: 'SwaraLingo - English Speaking Coach',
         short_name: 'SwaraLingo',
@@ -32,7 +32,24 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [], // API caching intentionally excluded — Dexie owns it
+        runtimeCaching: [
+          {
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'app-resources',
+              expiration: { maxEntries: 50, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
+            urlPattern: /\.(?:svg|png|ico|woff2?)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'app-assets',
+              expiration: { maxEntries: 30, maxAgeSeconds: 30 * 24 * 60 * 60 },
+            },
+          },
+        ],
         importScripts: ['/sw-push.js'],
       },
       devOptions: {

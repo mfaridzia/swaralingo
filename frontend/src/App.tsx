@@ -6,7 +6,8 @@ import { ShieldAlert } from 'lucide-react';
 
 // Import refactored reusable components
 import { Navbar } from './components/Navbar';
-import { SyncBanner } from './offline/indicator';
+import { InstallPrompt } from './components/InstallPrompt';
+import { UpdateBanner } from './components/UpdateBanner';
 import { PracticeDiary } from './components/PracticeDiary';
 import { SentenceChunks } from './components/SentenceChunks';
 import { Dashboard } from './components/Dashboard';
@@ -19,7 +20,7 @@ import { InterviewSimulator } from './components/InterviewSimulator';
 import { JournalCoach } from './components/JournalCoach';
 import type { UserProfile } from './components/Auth';
 
-import { apiFetch, clearAuth, dexieToApiLogs, showToast } from './api';
+import { apiFetch, clearAuth, showToast } from './api';
 
 interface PracticeLog {
   id: number;
@@ -142,29 +143,23 @@ function MainAppLayout({
     return () => window.removeEventListener('chunkAdded', handleRefetch);
   }, [queryClient, activeUser.id]);
 
-  // Listen to sync completion — read from Dexie & set cache directly.
-  // Avoid server refetch: Turso replica may lag behind the sync INSERT,
-  // causing the just-synced entry to disappear until next refresh.
+  // Auto-save diary draft to localStorage (debounced 2s)
   useEffect(() => {
-    const handleSynced = async () => {
-      const { db } = await import('./offline/db/dexie');
-      const { dexieToApiLogs } = await import('./api');
+    if (!activeUser?.id) return;
+    const timer = setTimeout(() => {
+      if (userInput) {
+        localStorage.setItem(`draft_diary_${activeUser.id}`, userInput);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [userInput, activeUser?.id]);
 
-      const [allLogs, allChunks, allJournals] = await Promise.all([
-        db.logs.orderBy('updatedAt').reverse().toArray(),
-        db.chunks.orderBy('updatedAt').reverse().toArray(),
-        db.journals.orderBy('updatedAt').reverse().toArray(),
-      ]);
-
-      queryClient.setQueryData(['logs', activeUser.id], { success: true, data: dexieToApiLogs(allLogs) });
-      queryClient.setQueryData(['chunks', activeUser.id], { success: true, data: dexieToApiLogs(allChunks) });
-      queryClient.setQueryData(['journals', activeUser.id], { success: true, data: dexieToApiLogs(allJournals) });
-      queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
-    };
-
-    window.addEventListener('swaralingo:synced', handleSynced);
-    return () => window.removeEventListener('swaralingo:synced', handleSynced);
-  }, [queryClient, activeUser.id]);
+  // Restore diary draft on mount
+  useEffect(() => {
+    if (!activeUser?.id) return;
+    const draft = localStorage.getItem(`draft_diary_${activeUser.id}`);
+    if (draft && !userInput) setUserInput(draft);
+  }, [activeUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Determine active tab class visually in Navbar based on current URL path
   const getActiveTab = (): 'diary' | 'chunks' | 'stats' | 'settings' | 'simulator' => {
@@ -222,6 +217,7 @@ function MainAppLayout({
       setUserInput('');
       setImprovedVersion('');
       setAiFeedback('');
+      localStorage.removeItem(`draft_diary_${activeUser.id}`);
       showToast('Practice diary entry saved successfully!', 'success');
 
       // Trigger a local notification reminder when successfully practicing
@@ -292,40 +288,6 @@ function MainAppLayout({
   const handleSaveLog = async (audioBlob?: Blob | null) => {
     if (!userInput || !improvedVersion || !aiFeedback) return;
 
-    // Offline mode: queue locally instead of posting to server
-    const offlineStore = (await import('./offline/store')).getOfflineStore();
-    if (offlineStore.offlineModeEnabled) {
-      try {
-        const { enqueueMutation, enqueueAudio } = await import('./offline/sync/engine');
-        let audioBlobId: number | undefined;
-        if (audioBlob) {
-          audioBlobId = await enqueueAudio(audioBlob);
-        }
-        const clientId = await enqueueMutation('logs', 'insert', {
-          user_input: userInput,
-          ai_feedback: aiFeedback,
-          improved_version: improvedVersion,
-          userId: activeUser?.id,
-          created_at: new Date().toISOString(),
-        }, audioBlobId);
-        // Clear form (optimistic)
-        setUserInput('');
-        setImprovedVersion('');
-        setAiFeedback('');
-        // Update UI from Dexie directly (no server refetch — entry not synced yet)
-        const { db } = await import('./offline/db/dexie');
-        const allLogs = await db.logs.orderBy('updatedAt').reverse().toArray();
-        queryClient.setQueryData(['logs', activeUser?.id], { success: true, data: dexieToApiLogs(allLogs) });
-        queryClient.invalidateQueries({ queryKey: ['stats', activeUser?.id] });
-        showToast('Saved to local queue (Offline Mode)', 'info');
-      } catch (err: any) {
-        setApiErrorMsg(err?.message || 'Failed to save offline. Storage may be full.');
-        showToast(err?.message || 'Failed to save offline.', 'error');
-      }
-      return;
-    }
-
-    // Online path: existing behavior
     let audioKey: string | null = null;
     if (audioBlob) {
       try {
@@ -360,7 +322,7 @@ function MainAppLayout({
 
   return (
     <div className="min-h-screen bg-[#09090b]">
-      <SyncBanner />
+      <UpdateBanner />
       <Navbar
         activeTab={activeTab}
         isMobileMenuOpen={isMobileMenuOpen}
@@ -484,6 +446,8 @@ function MainAppLayout({
           </div>
         </div>
       )}
+
+      <InstallPrompt />
 
       {/* Global sleek premium Toast banner */}
       {toast && (

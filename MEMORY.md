@@ -78,6 +78,7 @@
 - **ADR-064**: Membuat sistem global Toast Notification melayang berbasis custom event (`showToast`) untuk memberikan feedback visual sukses/gagal instan saat menyimpan diary, kosa kata chunks, jurnal, dan pengaturan reminder.
 - **ADR-065**: Menambahkan domain `https://cloudflareinsights.com` ke direktif `connect-src` CSP pada `index.html` untuk memulihkan warning pemblokiran Cloudflare Web Analytics telemetry.
 - **ADR-066**: Mengimplementasikan limitasi data (pagination) bertahap berbasis parameter query `limit` pada backend, dan menambahkan tombol "Load More" di frontend untuk Diary, Chunks, dan Journal History guna menghemat performa browser dan kuota bandwidth data.
+- **ADR-067**: [Remove Offline-First, Replace with Network Resilience + PWA Enhancements](docs/adr/0067-remove-offline-first-network-resilience.md) — menghapus seluruh modul offline-first (Dexie.js, sync engine, merge/retry/backfill) karena bug arsitektural fatal dan ketidakcocokan fundamental dengan aplikasi yang bergantung pada AI server-side. Menggantinya dengan network resilience (TanStack Query retry + localStorage draft auto-save) dan PWA UX enhancements (InstallPrompt A2HS + UpdateBanner new-version notification). Supersedes ADR-058 dan ADR-059.
 
 ## 🎨 Design System & UI Updates
 
@@ -89,21 +90,16 @@
 
 ## 📊 New Features Implemented (Sesi Ini)
 
-1. **Offline-First PWA — Full Vertical Slice** (Phases 0-6 complete)
-2. **App Icon:** New SwaraLingo PWA icon
-3. **Robust UTC Date Normalization & Client-Side DESC Sorting** for Diary, Chunks, and Journals.
-4. **Global Toast System** with custom event handlers for instant success/error feedback.
-5. **Cursor/Limit Pagination (Load More Button)** for Diary, Chunks, and Journals list views.
-6. **CSP telemetry fix** for Cloudflare Web Analytics.
+1. **Remove Offline-First** — Hapus seluruh modul Dexie.js, sync engine, merge/retry/backfill (~2055 lines deleted).
+2. **Network Resilience** — TanStack Query retry defaults (exponential backoff), localStorage draft auto-save (debounced 2s), networkMode: 'always'.
+3. **PWA UX Enhancements** — InstallPrompt (beforeinstallprompt A2HS banner), UpdateBanner (useRegisterSW new-version notification + hourly update checks).
+4. **Workbox Runtime Caching** — StaleWhileRevalidate untuk JS/CSS, CacheFirst untuk static assets.
 
 ## 🐛 Known Issues & Technical Debts
 
-- None.
-
-## 🎯 Next Immediate Steps
-- [ ] Expand offline coverage: chunks (SRS), journals, audio recordings (schema ready, just add route-map entries in sync endpoint).
-- [ ] Playwright E2E: offline diary → online sync (test file created at `frontend/e2e/offline-sync.spec.ts`, pending server setup for run).
-- [ ] Safari Partitioned cookie workaround (CHIPS not supported by Safari ITP) — host FE + API on same domain.
+- Stale service worker dari production build/deploy sebelumnya mungkin masih registered di browser — unregister manual via DevTools > Application > Service Workers.
+- `client_uuid` columns dan unique indexes masih ada di database (logs, chunks, journals) — harmless, cleanup next migration cycle.
+- Safari ITP tidak dukung Partitioned cookie (CHIPS) — solusi final: host FE + API di same domain.
 
 ## 🔮 Future Backlog (Real-Time SSE & WebSockets)
 
