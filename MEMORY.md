@@ -73,9 +73,11 @@
 - **ADR-059**: Perbaikan bug offline-first sync & interceptor. Memodifikasi `enqueueMutation` untuk menggunakan/mengekstrak client UUID yang ada saat update/delete (bukan selalu generate baru) serta mengimplementasikan penghapusan Dexie lokal pada operasi delete. Memperbarui `apiFetch` menggunakan skema Network-First with Local-Fallback untuk GET (hanya melayani dari Dexie ketika offline, serta meng-update Dexie saat online berhasil) dan mengekstrak `clientId` target dari request body, query params, atau URL path segmen pada interception update/delete.
 - **ADR-060**: Implementasi Web Push Notifications untuk Daily Reminder. Menambahkan tabel `push_subscriptions` di database, membuat endpoint `/subscribe` & `/unsubscribe`, serta mengonfigurasi Cloudflare Workers `scheduled` cron trigger. Menambahkan script push handler `sw-push.js` ke precache Workbox menggunakan `workbox.importScripts`. Memperbarui menu Settings di frontend untuk meminta izin notifikasi, melakukan subskripsi push via VAPID key, mengonversi waktu lokal alarm ke format UTC, dan menyimpan subskripsi aktif secara dinamis.
 - **ADR-061**: Otomatisasi Migrasi Database Produksi via Middleware. Menambahkan middleware auto-migration di `backend/src/index.ts` yang mengeksekusi `initDB()` secara otomatis sekali pada request pertama saat container Worker booting di production. Cara ini aman dari deploy-time validation Cloudflare dan menghilangkan kebutuhan memanggil `/api/init-db` secara manual saat ada pembaruan schema.
-
-
-
+- **ADR-062**: Normalisasi format tanggal `created_at` ke standar ISO 8601 UTC di backend route GET logs, chunks, dan journals untuk mengatasi bug pergeseran tanggal dan ketidakkonsistenan pengurutan (sorting) di browser client.
+- **ADR-063**: Mengimplementasikan pengurutan (sorting) DESC berbasis client-side pada daftar diary logs dan chunks menggunakan parsing numerik `new Date().getTime()` untuk menjamin urutan data terbaru selalu di atas secara konsisten.
+- **ADR-064**: Membuat sistem global Toast Notification melayang berbasis custom event (`showToast`) untuk memberikan feedback visual sukses/gagal instan saat menyimpan diary, kosa kata chunks, jurnal, dan pengaturan reminder.
+- **ADR-065**: Menambahkan domain `https://cloudflareinsights.com` ke direktif `connect-src` CSP pada `index.html` untuk memulihkan warning pemblokiran Cloudflare Web Analytics telemetry.
+- **ADR-066**: Mengimplementasikan limitasi data (pagination) bertahap berbasis parameter query `limit` pada backend, dan menambahkan tombol "Load More" di frontend untuk Diary, Chunks, dan Journal History guna menghemat performa browser dan kuota bandwidth data.
 
 ## 🎨 Design System & UI Updates
 
@@ -83,37 +85,22 @@
 - Setup custom HSL tokens, glassmorphism, dan micro-animations sesuai panduan `.agents/skills/skill-ui-system/SKILL.md`.
 - **UI Spacing Fix:** Menambahkan gap vertikal (`gap-y-4`) dan horizontal (`sm:gap-x-6`) pada form input `SentenceChunks.tsx` agar label _Meaning (Bahasa)_ tidak menempel ketat/menabrak kolom _English Phrase_ di atasnya pada tampilan mobile responsive.
 - **UI Spacing Fix (Navbar Collision):** Menyingkat nama-nama menu navigasi utama di desktop (Diary, Chunks, Stats, Interview, Journal) dan menyembunyikan tombol "Profile Settings" serta tombol "Logout" ke dalam satu Dropdown Menu melayang yang bersih di bawah kartu avatar user, membebaskan lebih dari 300px ruang horizontal secara estetik.
+- **Toast Notifications UI**: Implementasi toast notification melayang dengan transisi `.animate-slide-up` dan styling dynamic HSL border (emerald untuk sukses, red untuk error, blue untuk info).
 
 ## 📊 New Features Implemented (Sesi Ini)
 
-1. **Offline-First PWA — Full Vertical Slice** (Phases 0-6 complete):
-   - **Phase 0**: Test infrastructure (vitest, fake-indexeddb, jsdom, Playwright config)
-   - **Phase 1**: Backend migrations (`updated_at`, `client_uuid`, `deleted_at`) + `POST /api/sync` endpoint (LWW, idempotency, soft delete)
-   - **Phase 2**: Frontend Dexie schema (5 tables) + sync engine (coalesce, retry, triggers, backfill, store) + 20 unit tests
-   - **Phase 3**: `apiFetch` interceptor (read-through GET, write-queue POST/PUT/DELETE, write-through cache, online-only bypass)
-   - **Phase 4**: PWA shell (vite-plugin-pwa, CSP headers, manifest, SW generation via Workbox)
-   - **Phase 5**: UI indicators (`SyncBanner` + `SyncDot`) + Settings offline toggle + storage meter + clear data
-   - **Phase 6**: QuotaExceededError handling, bundle audit (1,028KB / 320KB gzip), E2E test file created
-
-   See [ADR-058](docs/adr/0058-offline-first-pwa.md) for full design. New files under `frontend/src/offline/`:
-   - `db/dexie.ts` — Dexie.js schema (logs, chunks, journals, audioBlobs, pendingSync)
-   - `sync/merge.ts` — coalesce mutations + merge server response
-   - `sync/retry.ts` — exponential backoff (1s → 60s cap, 10 max retries)
-   - `sync/engine.ts` — syncNow(), enqueueMutation(), enqueueAudio(), QuotaExceededError guards
-   - `sync/triggers.ts` — online/visibility/interval triggers (StrictMode-safe)
-   - `store.ts` — reactive offline store (localStorage + subscribe)
-   - `backfill.ts` — bulk backfill from server → Dexie
-   - `indicator.tsx` — SyncBanner (offline/pending/synced) + SyncDot (per-item status)
-
-2. **App Icon:** New SwaraLingo PWA icon (`frontend/public/icon.svg`) — sound wave motif in emerald gradient on dark background, ready for maskable icon generation via vite-plugin-pwa.
+1. **Offline-First PWA — Full Vertical Slice** (Phases 0-6 complete)
+2. **App Icon:** New SwaraLingo PWA icon
+3. **Robust UTC Date Normalization & Client-Side DESC Sorting** for Diary, Chunks, and Journals.
+4. **Global Toast System** with custom event handlers for instant success/error feedback.
+5. **Cursor/Limit Pagination (Load More Button)** for Diary, Chunks, and Journals list views.
+6. **CSP telemetry fix** for Cloudflare Web Analytics.
 
 ## 🐛 Known Issues & Technical Debts
 
 - None.
 
 ## 🎯 Next Immediate Steps
-- [x] ~~**Vertical slice: offline diary flow**~~ — Dexie schema + `apiFetch` interceptor + `POST /api/sync` endpoint + UI sync indicator. Single end-to-end path: write diary offline → reconnect → auto-sync. ✅ Complete (Phases 0-6).
-- [x] ~~**vite-plugin-pwa setup**~~ — service worker + manifest + CSP headers. App installable. ✅ Complete.
 - [ ] Expand offline coverage: chunks (SRS), journals, audio recordings (schema ready, just add route-map entries in sync endpoint).
 - [ ] Playwright E2E: offline diary → online sync (test file created at `frontend/e2e/offline-sync.spec.ts`, pending server setup for run).
 - [ ] Safari Partitioned cookie workaround (CHIPS not supported by Safari ITP) — host FE + API on same domain.
@@ -129,4 +116,3 @@
    - Implement real-time voice call simulation with immediate sound interruption detection using WebSockets.
 4. **Multiplayer "Speaking Duel" Peer Practice (WebSockets)**:
    - Real-time matchmaking and pairing of Indonesian speakers to perform collaborative job interview or daily-life roleplay with background AI scoring.
-
