@@ -17,9 +17,11 @@ import {
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onPrivacy: () => void;
+  onTerms: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onPrivacy, onTerms }) => {
   return (
     <div className="min-h-screen bg-[#09090b] text-white overflow-hidden relative">
       {/* Premium Gradient Background Orbs */}
@@ -65,7 +67,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               onClick={onGetStarted}
               className="premium-btn-hover bg-[#22c55e] hover:bg-[#4ade80] text-black text-sm font-bold px-8 py-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
-              Start Practicing Free
+              Start Practicing for Free
               <ArrowRight className="h-4.5 w-4.5" />
             </button>
             <button
@@ -257,12 +259,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             &copy; {new Date().getFullYear()} SwaraLingo. All rights reserved
           </span>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-white transition-colors">
+            <button onClick={onPrivacy} className="hover:text-white transition-colors cursor-pointer bg-transparent">
               Privacy Policy
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
+            </button>
+            <button onClick={onTerms} className="hover:text-white transition-colors cursor-pointer bg-transparent">
               Terms of Service
-            </a>
+            </button>
           </div>
         </div>
       </footer>

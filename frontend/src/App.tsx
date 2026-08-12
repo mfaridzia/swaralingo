@@ -18,6 +18,7 @@ import { Settings } from './components/Settings';
 import { LandingPage } from './components/LandingPage';
 import { InterviewSimulator } from './components/InterviewSimulator';
 import { JournalCoach } from './components/JournalCoach';
+import { LegalPage } from './components/LegalPage';
 import type { UserProfile } from './components/Auth';
 
 import { apiFetch, clearAuth, showToast } from './api';
@@ -499,20 +500,22 @@ function WelcomeRoutes({
         path="/" 
         element={
           !activeUser 
-            ? <LandingPage onGetStarted={() => navigate('/login')} /> 
+            ? <LandingPage onGetStarted={() => navigate('/login')} onPrivacy={() => navigate('/privacy')} onTerms={() => navigate('/terms')} />
             : <Navigate to="/dashboard" replace />
         } 
       />
 
       {/* Auth Screen */}
-      <Route 
-        path="/login" 
-        element={!activeUser ? <Auth onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
+      <Route
+        path="/login"
+        element={!activeUser ? <Auth onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />}
       />
 
+      {/* Legal Pages */}
+      <Route path="/privacy" element={<LegalPage type="privacy" onBack={() => navigate('/')} />} />
+      <Route path="/terms" element={<LegalPage type="terms" onBack={() => navigate('/')} />} />
 
-      
-      <Route 
+      <Route
         path="/dashboard/*" 
         element={activeUser ? (
           <MainAppLayout activeUser={activeUser} handleLogin={handleLogin} handleLogout={handleLogout} />
