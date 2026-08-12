@@ -14,11 +14,12 @@ interface SentenceChunk {
 interface SavedChunksListProps {
   chunks: { success: boolean; data: SentenceChunk[] } | undefined;
   loadingChunks: boolean;
+  fetchingMore: boolean;
   limit: number;
   onLoadMore: () => void;
 }
 
-export const SavedChunksList: React.FC<SavedChunksListProps> = ({ chunks, loadingChunks, limit, onLoadMore }) => {
+export const SavedChunksList: React.FC<SavedChunksListProps> = ({ chunks, loadingChunks, fetchingMore, limit, onLoadMore }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const exportToCSV = () => {
@@ -165,7 +166,11 @@ export const SavedChunksList: React.FC<SavedChunksListProps> = ({ chunks, loadin
           </div>
         )}
 
-        {chunks?.data && chunks.data.length >= limit && (
+        {fetchingMore && (
+          <div className="text-center py-3 text-xs text-[#a1a1aa] animate-pulse">Loading more...</div>
+        )}
+
+        {chunks?.data && chunks.data.length >= limit && !fetchingMore && (
           <button
             onClick={onLoadMore}
             className="w-full text-center text-xs font-bold border border-[#27272a] hover:border-zinc-400 py-3.5 rounded-xl cursor-pointer bg-zinc-950/20 text-[#a1a1aa] hover:text-white transition-all mt-4"

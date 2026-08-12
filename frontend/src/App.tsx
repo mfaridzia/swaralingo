@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ShieldAlert } from 'lucide-react';
@@ -184,16 +184,18 @@ function MainAppLayout({
   const [chunksLimit, setChunksLimit] = useState(10);
 
   // Queries
-  const { data: logs, isLoading: loadingLogs } = useQuery<{ success: boolean; data: PracticeLog[] }>({
+  const { data: logs, isLoading: loadingLogs, isFetching: fetchingLogs } = useQuery<{ success: boolean; data: PracticeLog[] }>({
     queryKey: ['logs', activeUser.id, diaryLimit],
     queryFn: () => apiFetch(`/logs?userId=${activeUser.id}&limit=${diaryLimit}`).then(res => res.json()),
     enabled: !!activeUser,
+    placeholderData: keepPreviousData,
   });
 
-  const { data: chunks, isLoading: loadingChunks } = useQuery<{ success: boolean; data: SentenceChunk[] }>({
+  const { data: chunks, isLoading: loadingChunks, isFetching: fetchingChunks } = useQuery<{ success: boolean; data: SentenceChunk[] }>({
     queryKey: ['chunks', activeUser.id, chunksLimit],
     queryFn: () => apiFetch(`/chunks?userId=${activeUser.id}&limit=${chunksLimit}`).then(res => res.json()),
     enabled: !!activeUser,
+    placeholderData: keepPreviousData,
   });
 
   const { data: stats, isLoading: loadingStats } = useQuery<{ success: boolean; data: StatsData }>({
@@ -359,7 +361,7 @@ function MainAppLayout({
                     />
                   </div>
                   <div className="lg:col-span-5">
-                    <SavedDiaryLogs logs={logs} loadingLogs={loadingLogs} limit={diaryLimit} onLoadMore={() => setDiaryLimit(prev => prev + 10)} />
+                    <SavedDiaryLogs logs={logs} loadingLogs={loadingLogs} fetchingMore={fetchingLogs && !loadingLogs} limit={diaryLimit} onLoadMore={() => setDiaryLimit(prev => prev + 10)} />
                   </div>
                 </div>
               </AnimatedRouteWrapper>
@@ -380,7 +382,7 @@ function MainAppLayout({
                     />
                   </div>
                   <div className="lg:col-span-5">
-                    <SavedChunksList chunks={chunks} loadingChunks={loadingChunks} limit={chunksLimit} onLoadMore={() => setChunksLimit(prev => prev + 10)} />
+                    <SavedChunksList chunks={chunks} loadingChunks={loadingChunks} fetchingMore={fetchingChunks && !loadingChunks} limit={chunksLimit} onLoadMore={() => setChunksLimit(prev => prev + 10)} />
                   </div>
                 </div>
               </AnimatedRouteWrapper>
