@@ -85,7 +85,7 @@ export function LegalPage({ type, onBack }: LegalPageProps) {
             <section className="space-y-4 text-sm text-[#d4d4d8] leading-relaxed">
               <h2 className="text-base font-bold text-white">6. Contact</h2>
               <p>
-                For privacy-related inquiries, contact us at <a href="mailto:admin@swaralingo.dev" className="text-[#22c55e] hover:underline">admin@swaralingo.dev</a>.
+                For privacy-related inquiries, contact us at <a href="mailto:muhfaridzia@gmail.com" className="text-[#22c55e] hover:underline">muhfaridzia@gmail.com</a>.
               </p>
             </section>
           </>
@@ -160,7 +160,7 @@ export function LegalPage({ type, onBack }: LegalPageProps) {
             <section className="space-y-4 text-sm text-[#d4d4d8] leading-relaxed">
               <h2 className="text-base font-bold text-white">9. Contact</h2>
               <p>
-                For questions about these Terms, contact us at <a href="mailto:admin@swaralingo.dev" className="text-[#22c55e] hover:underline">admin@swaralingo.dev</a>.
+                For questions about these Terms, contact us at <a href="mailto:muhfaridzia@gmail.com" className="text-[#22c55e] hover:underline">muhfaridzia@gmail.com</a>.
               </p>
             </section>
           </>

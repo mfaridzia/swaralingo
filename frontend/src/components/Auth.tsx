@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Mail, User, Lock, ArrowRight, ShieldCheck } from "lucide-react";
+import { Mail, User, Lock, ArrowRight } from "lucide-react";
 import { API_URL, GOOGLE_CLIENT_ID } from "../config";
 import { apiFetch } from "../api";
 
@@ -262,10 +262,6 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           </div>
         </div>
 
-        <div className="text-center flex items-center justify-center gap-1.5 text-[10px] text-[#52525b] uppercase font-bold tracking-widest">
-          <ShieldCheck className="h-4 w-4 text-[#22c55e]" />
-          Secured Client-Side Hashing (SHA-256)
-        </div>
       </div>
     </div>
   );
