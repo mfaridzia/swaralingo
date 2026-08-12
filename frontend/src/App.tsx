@@ -132,10 +132,18 @@ function MainAppLayout({
     }
   }, []);
 
-  // Listen to custom event dispatched by sub-component when chunk is added
+  // Listen to custom event from SentenceChunks — optimistic cache update (no refetch lag)
   useEffect(() => {
-    const handleRefetch = () => {
-      queryClient.invalidateQueries({ queryKey: ['chunks', activeUser.id] });
+    const handleRefetch = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) {
+        // Optimistic: prepend new chunk to cache instantly
+        queryClient.setQueryData(['chunks', activeUser.id], (old: any) => {
+          const oldData = old?.data ? (Array.isArray(old.data) ? old.data : []) : [];
+          return { ...old, data: [detail, ...oldData] };
+        });
+      }
+      // Stats still need server recalculation
       queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
     };
 

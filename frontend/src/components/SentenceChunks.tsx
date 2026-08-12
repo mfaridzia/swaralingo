@@ -103,7 +103,15 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
       setNewMeaning('');
       setNewExample('');
       showToast('Sentence chunk saved successfully!', 'success');
-      window.dispatchEvent(new CustomEvent('chunkAdded'));
+      window.dispatchEvent(new CustomEvent('chunkAdded', {
+        detail: {
+          id: data.data?.id ?? Date.now(),
+          phrase: newPhrase,
+          meaning: newMeaning,
+          example: newExample,
+          category: category,
+        }
+      }));
     } catch (err: any) {
       showToast(err.message || 'Failed to save chunk.', 'error');
     } finally {
