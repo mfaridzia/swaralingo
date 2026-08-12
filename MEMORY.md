@@ -79,6 +79,7 @@
 - **ADR-065**: Menambahkan domain `https://cloudflareinsights.com` ke direktif `connect-src` CSP pada `index.html` untuk memulihkan warning pemblokiran Cloudflare Web Analytics telemetry.
 - **ADR-066**: Mengimplementasikan limitasi data (pagination) bertahap berbasis parameter query `limit` pada backend, dan menambahkan tombol "Load More" di frontend untuk Diary, Chunks, dan Journal History guna menghemat performa browser dan kuota bandwidth data.
 - **ADR-067**: [Remove Offline-First, Replace with Network Resilience + PWA Enhancements](docs/adr/0067-remove-offline-first-network-resilience.md) — menghapus seluruh modul offline-first (Dexie.js, sync engine, merge/retry/backfill) karena bug arsitektural fatal dan ketidakcocokan fundamental dengan aplikasi yang bergantung pada AI server-side. Menggantinya dengan network resilience (TanStack Query retry + localStorage draft auto-save) dan PWA UX enhancements (InstallPrompt A2HS + UpdateBanner new-version notification). Supersedes ADR-058 dan ADR-059.
+- **ADR-068**: Optimasi performa login & dashboard loading. Root cause: 4 round trips sequential (auth → logs → chunks → stats), stats query `SELECT *` ambil semua kolom termasuk audio_base64, multiple `.filter()` pass di array. Fix: (1) `getInitialDashboardData()` helper pre-fetch logs (10) + chunks (10) paralel dan return di response auth — eliminasi 2 round trip; (2) stats query hanya SELECT kolom scoring (created_at, user_input, ai_feedback); (3) single-pass Map-based date indexing gantikan multiple `.filter()`; (4) frontend pre-populate TanStack Query cache via `setQueryData` dari response login — dashboard langsung render tanpa loading spinner. Backend deploy: wrangler 4.120.1 dengan `--config` absolute path karena root `wrangler.jsonc` override `backend/wrangler.toml`.
 
 ## 🎨 Design System & UI Updates
 
@@ -94,6 +95,11 @@
 2. **Network Resilience** — TanStack Query retry defaults (exponential backoff), localStorage draft auto-save (debounced 2s), networkMode: 'always'.
 3. **PWA UX Enhancements** — InstallPrompt (beforeinstallprompt A2HS banner), UpdateBanner (useRegisterSW new-version notification + hourly update checks).
 4. **Workbox Runtime Caching** — StaleWhileRevalidate untuk JS/CSS, CacheFirst untuk static assets.
+5. **Login Performance Optimization** — Dashboard data (logs + chunks) di-batch dalam response auth, TanStack Query cache pre-populated dari login, stats query dioptimasi (column selection + single-pass Map indexing). Login + dashboard load turun dari 4 round trips ke 1.
+6. **Landing Page Expansion** — 9 fitur cards (dari 3), mencakup AI Interview, Journaling, Chunks Bank, Progress Dashboard.
+7. **Privacy Policy & Terms of Service** — Halaman legal lengkap dengan routing `/privacy` dan `/terms`.
+8. **Contact Email Update** — `admin@swaralingo.dev` → `muhfaridzia@gmail.com`.
+9. **Auth UX Cleanup** — Hapus badge "Secured Client-Side Hashing (SHA-256)" yang membingungkan user.
 
 ## 🐛 Known Issues & Technical Debts
 
