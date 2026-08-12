@@ -488,7 +488,7 @@ function WelcomeRoutes({
   handleLogout
 }: {
   activeUser: UserProfile | null;
-  handleLogin: (user: UserProfile) => void;
+  handleLogin: (user: UserProfile, dashboard?: { logs?: any; chunks?: any }) => void;
   handleLogout: () => void;
 }) {
   const navigate = useNavigate();
@@ -533,6 +533,7 @@ function WelcomeRoutes({
 export default function App() {
   const [activeUser, setActiveUser] = useState<UserProfile | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const queryClient = useQueryClient();
 
   // Load session from localStorage; cookie HttpOnly terverifikasi server saat request pertama (401 → auto logout)
   useEffect(() => {
@@ -547,7 +548,16 @@ export default function App() {
     setInitializing(false);
   }, []);
 
-  const handleLogin = (user: UserProfile) => {
+  const handleLogin = (user: UserProfile, dashboard?: { logs?: any; chunks?: any }) => {
+    // Pre-populate TanStack cache with server-sent dashboard data — 0 extra requests on login
+    if (dashboard) {
+      if (dashboard.logs) {
+        queryClient.setQueryData(['logs', user.id, 10], dashboard.logs);
+      }
+      if (dashboard.chunks) {
+        queryClient.setQueryData(['chunks', user.id, 10], dashboard.chunks);
+      }
+    }
     setActiveUser(user);
     localStorage.setItem('fluency_user', JSON.stringify(user));
   };

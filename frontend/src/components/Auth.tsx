@@ -18,7 +18,7 @@ export interface UserProfile {
 }
 
 interface AuthProps {
-  onLogin: (user: UserProfile) => void;
+  onLogin: (user: UserProfile, dashboard?: { logs?: any; chunks?: any }) => void;
 }
 
 async function MathSha256(message: string): Promise<string> {
@@ -55,7 +55,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           if (resData.token) {
             localStorage.setItem('swaralingo_token', resData.token);
           }
-          onLogin(resData.data);
+          onLogin(resData.data, resData.dashboard);
         } else {
           setErrorMsg(resData.error || "Google Sign-In failed");
         }
@@ -127,7 +127,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         if (resData.token) {
           localStorage.setItem('swaralingo_token', resData.token);
         }
-        onLogin(resData.data);
+        onLogin(resData.data, resData.dashboard);
       } else {
         setErrorMsg(resData.error || "Autentikasi gagal. Silakan coba lagi.");
       }

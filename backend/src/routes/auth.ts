@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import db from '../database.js';
 import { authRateLimiter } from '../middleware/rateLimiter.js';
 import { requireAuth, setAuthCookie, clearAuthCookie, signToken } from '../middleware/auth.js';
+import { getInitialDashboardData } from '../helpers/dashboard.js';
 import { getEnvVar } from '../config.js';
 
 const authRouter = new Hono();
@@ -100,7 +101,8 @@ authRouter.post('/google', authRateLimiter, async (c) => {
         }
         await setAuthCookie(c, user.id);
         const token = await signToken(user.id);
-        return c.json({ success: true, data: user, token });
+        const dashboard = await getInitialDashboardData(user.id);
+        return c.json({ success: true, data: user, token, dashboard });
       }
       throw verifyErr;
     }
@@ -120,7 +122,8 @@ authRouter.post('/google', authRateLimiter, async (c) => {
 
     await setAuthCookie(c, user.id);
     const token = await signToken(user.id);
-    return c.json({ success: true, data: user, token });
+    const dashboard = await getInitialDashboardData(user.id);
+    return c.json({ success: true, data: user, token, dashboard });
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     return c.json({ success: false, error: 'Failed to verify Google Sign-In: ' + error.message }, 500);
@@ -151,7 +154,8 @@ authRouter.post('/register', authRateLimiter, async (c) => {
 
       await setAuthCookie(c, Number(info.lastInsertRowid));
       const token = await signToken(Number(info.lastInsertRowid));
-      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English' }, token }, 201);
+      const dashboard = await getInitialDashboardData(Number(info.lastInsertRowid));
+      return c.json({ success: true, data: { id: info.lastInsertRowid, email, name, target_language: 'English' }, token, dashboard }, 201);
     } catch (dbErr: any) {
       if (dbErr.message.includes('UNIQUE constraint failed')) {
         return c.json({ success: false, error: 'Email already registered' }, 400);
@@ -202,7 +206,8 @@ authRouter.post('/login', authRateLimiter, async (c) => {
 
     await setAuthCookie(c, user.id);
     const token = await signToken(user.id);
-    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language }, token });
+    const dashboard = await getInitialDashboardData(user.id);
+    return c.json({ success: true, data: { id: user.id, name: user.name, email: user.email || email, target_language: user.target_language }, token, dashboard });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
   }
