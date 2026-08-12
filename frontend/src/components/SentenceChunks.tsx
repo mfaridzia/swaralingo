@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  PlusCircle, 
-  Tag, 
-  Layers, 
-  BookOpen, 
-  RotateCw, 
-  Check, 
+import {
+  PlusCircle,
+  Tag,
+  Layers,
+  BookOpen,
+  RotateCw,
+  Check,
   HelpCircle,
   TrendingUp,
   BrainCircuit,
@@ -41,14 +41,15 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
 }) => {
   const [category, setCategory] = useState('IT & Daily');
   const [activeSubTab, setActiveSubTab] = useState<'add' | 'review'>('add');
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Flashcard states
   const [chunks, setChunks] = useState<SentenceChunk[]>([]);
   const [loadingChunks, setLoadingChunks] = useState(false);
   const [currentCardIdx, setCurrentCardIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewComplete, setReviewComplete] = useState(false);
-  
+
   // Get activeUser ID
   const savedUser = localStorage.getItem('fluency_user');
   const userId = savedUser ? JSON.parse(savedUser).id : null;
@@ -77,22 +78,23 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
     }
   }, [activeSubTab]);
 
-  const handleSaveWithCategory = (e: React.FormEvent) => {
+  const handleSaveWithCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPhrase || !newMeaning || !newExample) return;
+    if (!newPhrase || !newMeaning || !newExample || isSaving) return;
 
-    apiFetch('/chunks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phrase: newPhrase,
-        meaning: newMeaning,
-        example: newExample,
-        category: category
-      }),
-    })
-    .then(res => res.json())
-    .then(data => {
+    setIsSaving(true);
+    try {
+      const res = await apiFetch('/chunks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phrase: newPhrase,
+          meaning: newMeaning,
+          example: newExample,
+          category: category
+        }),
+      });
+      const data = await res.json();
       if (data && !data.success) {
         showToast(data.error || 'Failed to save chunk.', 'error');
         return;
@@ -102,17 +104,18 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
       setNewExample('');
       showToast('Sentence chunk saved successfully!', 'success');
       window.dispatchEvent(new CustomEvent('chunkAdded'));
-    })
-    .catch(err => {
+    } catch (err: any) {
       showToast(err.message || 'Failed to save chunk.', 'error');
-    });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRateCard = (rating: 'easy' | 'medium' | 'hard') => {
     // In a fully loaded server database, this would schedule future review intervals.
     // Here we simulate the transition to the next card with micro-interactions.
     setIsFlipped(false);
-    
+
     setTimeout(() => {
       if (currentCardIdx + 1 < chunks.length) {
         setCurrentCardIdx(prev => prev + 1);
@@ -143,8 +146,8 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
           <button
             onClick={() => setActiveSubTab('add')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
-              activeSubTab === 'add' 
-                ? 'bg-[#22c55e] text-[#09090b]' 
+              activeSubTab === 'add'
+                ? 'bg-[#22c55e] text-[#09090b]'
                 : 'text-[#a1a1aa] hover:text-white'
             }`}
           >
@@ -153,8 +156,8 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
           <button
             onClick={() => setActiveSubTab('review')}
             className={`flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
-              activeSubTab === 'review' 
-                ? 'bg-[#22c55e] text-[#09090b]' 
+              activeSubTab === 'review'
+                ? 'bg-[#22c55e] text-[#09090b]'
                 : 'text-[#a1a1aa] hover:text-white'
             }`}
           >
@@ -242,10 +245,15 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
           <div className="flex justify-end pt-2">
             <button
               type="submit"
-              className="premium-btn-hover flex items-center gap-2 rounded-xl bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-[#09090b] border-none cursor-pointer"
+              disabled={isSaving}
+              className="premium-btn-hover flex items-center gap-2 rounded-xl bg-[#22c55e] px-5 py-2.5 text-sm font-semibold text-[#09090b] border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add to Chunks Bank
-              <PlusCircle className="h-4 w-4" />
+              {isSaving ? 'Saving...' : (
+                <>
+                  Add to Chunks Bank
+                  <PlusCircle className="h-4 w-4" />
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -295,7 +303,7 @@ export const SentenceChunks: React.FC<SentenceChunksProps> = ({
           ) : (
             <div className="space-y-6">
               {/* Flip Flashcard Deck container */}
-              <div 
+              <div
                 onClick={() => setIsFlipped(!isFlipped)}
                 className={`relative w-full h-56 rounded-2xl cursor-pointer perspective-1000 transition-all duration-500 transform-style-3d hover:shadow-[0_0_20px_rgba(34,197,94,0.15)] ${
                   isFlipped ? 'rotate-y-180' : ''
