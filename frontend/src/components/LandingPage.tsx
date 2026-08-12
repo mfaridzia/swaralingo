@@ -9,6 +9,10 @@ import {
   ShieldCheck,
   Zap,
   Award,
+  BrainCircuit,
+  MessageSquareText,
+  PenLine,
+  BarChart3,
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -122,44 +126,127 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       </section>
 
       {/* Core Features Grid */}
-      <section className="max-w-[1200px] mx-auto px-6 py-20 border-t border-[#27272a]/40 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="space-y-3">
-          <div className="h-10 w-10 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center text-[#22c55e]">
-            <Mic className="h-5 w-5" />
-          </div>
-          <h3 className="text-base font-bold text-white uppercase tracking-wider">
-            Voice Input (STT)
-          </h3>
-          <p className="text-xs text-[#a1a1aa] leading-relaxed">
-            Practice speaking naturally. Dictate your thoughts directly using
-            the built-in microphone converter.
+      <section className="max-w-[1200px] mx-auto px-6 py-20 border-t border-[#27272a]/40">
+        <div className="text-center mb-14 space-y-3">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+            Everything You Need to Master English
+          </h2>
+          <p className="text-sm text-[#a1a1aa] max-w-lg mx-auto">
+            Built for Indonesian IT professionals — from daily standup practice to job interview simulation.
           </p>
         </div>
 
-        <div className="space-y-3">
-          <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-            <Volume2 className="h-5 w-5" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Row 1 */}
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center text-[#22c55e]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              AI Grammar Coach
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Get real-time grammar corrections and natural phrasing suggestions powered by Gemini AI. Perfect your standup updates.
+            </p>
           </div>
-          <h3 className="text-base font-bold text-white uppercase tracking-wider">
-            Pronunciation Guide (TTS)
-          </h3>
-          <p className="text-xs text-[#a1a1aa] leading-relaxed">
-            Listen to native pronunciations. Choose from multiple male/female
-            accents to build your auditory muscle memory.
-          </p>
-        </div>
 
-        <div className="space-y-3">
-          <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-            <Award className="h-5 w-5" />
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <Mic className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              Voice Input (STT)
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Practice speaking naturally. Dictate your thoughts using the built-in microphone and get instant transcription.
+            </p>
           </div>
-          <h3 className="text-base font-bold text-white uppercase tracking-wider">
-            Streaks & Gamification
-          </h3>
-          <p className="text-xs text-[#a1a1aa] leading-relaxed">
-            Stay highly motivated. Track your daily consistency streak, unlock
-            academic badges, and solve AI personalized challenges.
-          </p>
+
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Volume2 className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              Pronunciation (TTS)
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Listen to native pronunciation. Choose from multiple accents to build your auditory muscle memory.
+            </p>
+          </div>
+
+          {/* Row 2 */}
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <BrainCircuit className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              Sentence Chunks Bank
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Save idioms, phrases, and sentence templates. Review with spaced repetition flashcards.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <MessageSquareText className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              AI Interview Simulator
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Practice mock interviews with Evelyn, an AI recruiter. Real-time feedback, scoring, and professional response tips.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <PenLine className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              AI Journaling Coach
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Reflect on your day with an empathetic AI coach. Mood detection, warm reflections, and guided prompts.
+            </p>
+          </div>
+
+          {/* Row 3 */}
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              Progress Dashboard
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Track your fluency trends, weekly growth, and grammar mistake heatmap with beautiful visualizations.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+              <Zap className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              Daily Challenges
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              AI-generated personalized challenges based on your common grammar mistakes. Fresh every day.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-10 w-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <Award className="h-5 w-5" />
+            </div>
+            <h3 className="text-base font-bold text-white uppercase tracking-wider">
+              Streaks & Badges
+            </h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Stay motivated with daily consistency streaks, unlock achievement badges, and track your learning milestones.
+            </p>
+          </div>
         </div>
       </section>
 
