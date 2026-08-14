@@ -102,6 +102,8 @@ function MainAppLayout({
   const [newMeaning, setNewMeaning] = useState('');
   const [newExample, setNewExample] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [diaryLimit, setDiaryLimit] = useState(10);
+  const [chunksLimit, setChunksLimit] = useState(10);
 
   useEffect(() => {
     if (toast) {
@@ -185,9 +187,6 @@ function MainAppLayout({
   };
 
   const activeTab = getActiveTab();
-
-  const [diaryLimit, setDiaryLimit] = useState(10);
-  const [chunksLimit, setChunksLimit] = useState(10);
 
   // Queries
   const { data: logs, isLoading: loadingLogs, isFetching: fetchingLogs } = useQuery<{ success: boolean; data: PracticeLog[] }>({
