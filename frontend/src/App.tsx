@@ -143,14 +143,19 @@ function MainAppLayout({
           const oldData = old?.data ? (Array.isArray(old.data) ? old.data : []) : [];
           return { ...old, data: [detail, ...oldData] };
         });
+        queryClient.setQueryData(['chunks', activeUser.id, chunksLimit], (old: any) => {
+          const oldData = old?.data ? (Array.isArray(old.data) ? old.data : []) : [];
+          return { ...old, data: [detail, ...oldData] };
+        });
       }
-      // Stats still need server recalculation
+      // Stats still need server recalculation, and chunks list should sync in background
+      queryClient.invalidateQueries({ queryKey: ['chunks', activeUser.id] });
       queryClient.invalidateQueries({ queryKey: ['stats', activeUser.id] });
     };
 
     window.addEventListener('chunkAdded', handleRefetch);
     return () => window.removeEventListener('chunkAdded', handleRefetch);
-  }, [queryClient, activeUser.id]);
+  }, [queryClient, activeUser.id, chunksLimit]);
 
   // Auto-save diary draft to localStorage (debounced 2s)
   useEffect(() => {

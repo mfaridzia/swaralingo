@@ -98,10 +98,11 @@
 4. **Workbox Runtime Caching** — StaleWhileRevalidate untuk JS/CSS, CacheFirst untuk static assets.
 5. **Login Performance Optimization** — Dashboard data (logs + chunks) di-batch dalam response auth, TanStack Query cache pre-populated dari login, stats query dioptimasi (column selection + single-pass Map indexing). Login + dashboard load turun dari 4 round trips ke 1.
 6. **Database Migration Performance Optimization** — Menggunakan `c.executionCtx.waitUntil` untuk memindahkan verifikasi & migrasi database `initDB()` ke background task di Cloudflare Workers. Cold start request sekarang langsung direspon instan tanpa latency overhead dari ~34 SQL roundtrips ke Turso.
-7. **Landing Page Expansion** — 9 fitur cards (dari 3), mencakup AI Interview, Journaling, Chunks Bank, Progress Dashboard.
-8. **Privacy Policy & Terms of Service** — Halaman legal lengkap dengan routing `/privacy` dan `/terms`.
-9. **Contact Email Update** — `admin@swaralingo.dev` → `muhfaridzia@gmail.com`.
-10. **Auth UX Cleanup** — Hapus badge "Secured Client-Side Hashing (SHA-256)" yang membingungkan user.
+7. **Fix Sentence Chunks UI Update** — Memperbaiki bug di mana data chunks yang baru ditambahkan tidak langsung muncul di UI. Masalah ini disebabkan oleh perbedaan/mismatch *query key* antara cache update (`['chunks', activeUser.id]`) dengan query utama daftar chunks di UI (`['chunks', activeUser.id, chunksLimit]`). Sekarang keduanya diperbarui secara optimistik sekaligus di-invalidate secara otomatis saat event `chunkAdded` terpicu.
+8. **Landing Page Expansion** — 9 fitur cards (dari 3), mencakup AI Interview, Journaling, Chunks Bank, Progress Dashboard.
+9. **Privacy Policy & Terms of Service** — Halaman legal lengkap dengan routing `/privacy` dan `/terms`.
+10. **Contact Email Update** — `admin@swaralingo.dev` → `muhfaridzia@gmail.com`.
+11. **Auth UX Cleanup** — Hapus badge "Secured Client-Side Hashing (SHA-256)" yang membingungkan user.
 
 ## 🐛 Known Issues & Technical Debts
 
