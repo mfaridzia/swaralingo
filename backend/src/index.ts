@@ -32,12 +32,18 @@ let isDbInitialized = false;
 
 app.use('*', async (c, next) => {
   if (!isDbInitialized && !isBunRuntime) {
-    try {
-      await initDB();
-      isDbInitialized = true;
-      console.log('[Auto-Migration] Database verified/initialized on first request.');
-    } catch (err: any) {
-      console.error('[Auto-Migration] Failed to initialize database:', err.message);
+    isDbInitialized = true;
+    const promise = initDB()
+      .then(() => {
+        console.log('[Auto-Migration] Database verified/initialized in background.');
+      })
+      .catch((err: any) => {
+        isDbInitialized = false;
+        console.error('[Auto-Migration] Failed to initialize database in background:', err.message);
+      });
+
+    if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
+      c.executionCtx.waitUntil(promise);
     }
   }
   await next();
