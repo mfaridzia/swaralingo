@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { InterviewSimulator } from '../components/InterviewSimulator';
+import { InterviewSimulator } from './InterviewSimulator';
 
 describe('InterviewSimulator Component', () => {
   it('should render role selection and launch simulation session', () => {

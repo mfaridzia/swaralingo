@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { JournalCoach } from '../components/JournalCoach';
+import { JournalCoach } from './JournalCoach';
 
 describe('JournalCoach Component', () => {
   const createWrapper = () => {

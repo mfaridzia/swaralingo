@@ -14,7 +14,7 @@ vi.mock('virtual:pwa-register/react', () => {
   };
 });
 
-import { UpdateBanner } from '../components/UpdateBanner';
+import { UpdateBanner } from './UpdateBanner';
 
 describe('UpdateBanner Component', () => {
   it('should render banner when update is available and trigger refresh on click', () => {

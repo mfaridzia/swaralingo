@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { apiFetch, showToast, clearAuth } from '../api';
+import { apiFetch, showToast } from './api';
 
 describe('Frontend API Fetch Interceptor & Helpers', () => {
   beforeEach(() => {

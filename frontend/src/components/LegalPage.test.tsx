@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { LegalPage } from '../components/LegalPage';
+import { LegalPage } from './LegalPage';
 
 describe('LegalPage Component', () => {
   it('should render Privacy Policy correctly and handle back button', () => {
