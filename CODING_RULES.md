@@ -27,12 +27,16 @@ Dilarang mencoba-coba library baru atau menulis script debugging eksperimental l
 - Fetching data WAJIB menggunakan TanStack Query atau Server Actions. Dilarang `useEffect` untuk fetching data.
 - Elemen interaktif WAJIB accessible (ARIA labels, focus states).
 
-## 6. Mandatory Automated Testing Rule (Unit, Integration & E2E)
-- Setiap pembuatan **fitur baru**, **perubahan logika (refactor)**, atau **penambahan endpoint/komponen** WAJIB disertai pembuatan atau pembaruan test terkait.
-- **Backend**: Buat/update unit & integration test di `backend/src/test/` menggunakan Vitest (`bun test`). Pastikan logika route, middleware (auth/csrf/rate-limit), database query, dan mock API eksternal teruji.
-- **Frontend**: Buat/update unit & component test di `frontend/src/test/` menggunakan Vitest + JSDOM (`bun run test`) untuk helper, algoritma bisnis, dan state interceptor.
-- **End-to-End (E2E)**: Untuk alur user journey yang kritis (auth, form submission, navigasi), buat/update test Playwright di `frontend/e2e/` (`bun run test:e2e`).
-- AI Assistant WAJIB menjalankan suite test (`bun test`, `bun run test`, `bun run test:e2e`) dan memastikan **100% Pass (hijau)** sebelum menyatakan tugas selesai.
+## 6. Mandatory Automated Testing Rule (100% Component & Logic Coverage)
+- Setiap pembuatan **fitur baru**, **perubahan logika (refactor)**, atau **penambahan/modifikasi komponen UI** WAJIB disertai pembuatan atau pembaruan test terkait.
+- **Frontend Components & Shared Components (100% Wajib Test)**:
+  - Seluruh komponen UI (termasuk shared components, layout, modal, banner, form, dan interactive widget di bawah `src/components/`) **WAJIB memiliki component/unit test (`*.test.tsx` / `*.test.ts`)**.
+  - Wajib menguji render state, conditional rendering (loading/error/empty state), user interaction (click/input/change events), handling props, accessibility attributes, serta integrasi custom events/toasts.
+- **Backend APIs & Middlewares**:
+  - Buat/update unit & integration test di `backend/src/test/` menggunakan Vitest (`bun test`). Pastikan logika route, middleware (auth/csrf/rate-limit), database queries, parameter pagination, dan mock external SDK teruji.
+- **End-to-End (E2E)**:
+  - Untuk alur user journey yang kritis (auth, form submission, full practice cycle, navigasi), buat/update test Playwright di `frontend/e2e/` (`bun run test:e2e`).
+- AI Assistant WAJIB menjalankan seluruh suite test (`bun test`, `bun run test`, `bun run test:e2e`) dan memastikan **100% Pass (hijau)** sebelum menyatakan tugas selesai.
 
 ## 7. Memory Auto-Update Rule
 Di akhir setiap sesi penyelesaian tugas, AI WAJIB memperbarui file `MEMORY.md` dengan status progress terbaru, keputusan arsitektur (ADR) baru, dan daftar next steps.
