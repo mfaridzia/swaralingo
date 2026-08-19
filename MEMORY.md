@@ -104,7 +104,7 @@
 9. **Privacy Policy & Terms of Service** — Halaman legal lengkap dengan routing `/privacy` dan `/terms`.
 10. **Contact Email Update** — `admin@swaralingo.dev` → `muhfaridzia@gmail.com`.
 11. **Auth UX Cleanup** — Hapus badge "Secured Client-Side Hashing (SHA-256)" yang membingungkan user.
-12. **Automated Testing Suite (Vitest + Playwright)** — Implementasi 48 Backend Tests (PBKDF2, JWT, CSRF, Rate Limiting, IDOR, CRUD, AI Gemini Mock, Whisper Transcribe Fallback, Audio Storage CRUD, Journals Reflection, Web Push Notifications), 24 Frontend Unit Tests (API fetch interceptor, SM-2 Spaced Repetition, Vocal Fillers, Streak & Badges, Shadowing Pronunciation Accuracy, Real-Time Chunk Search/Filters), dan 2 Playwright E2E Tests (Full User Registration Journey & Practice Diary Grammar Analysis Flow). Total 74 automated tests, 100% pass (Backend Line Coverage: 74.34%, Function Coverage: 82.23%, Frontend Core: 100%).
+12. **Automated Testing Suite (Vitest + Playwright)** — Implementasi 48 Backend Tests (PBKDF2, JWT, CSRF, Rate Limiting, IDOR, CRUD, AI Gemini Mock, Whisper Transcribe Fallback, Audio Storage CRUD, Journals Reflection, Web Push Notifications), 34 Frontend Unit & Component Tests (API fetch interceptor, SM-2 Spaced Repetition, Vocal Fillers, Streak & Badges, Shadowing Pronunciation Accuracy, Real-Time Chunk Search/Filters, UpdateBanner, InstallPrompt PWA, LegalPage Privacy/Terms, Settings Profile & VAPID toggle, InterviewSimulator, JournalCoach), dan 2 Playwright E2E Tests (Full User Registration Journey & Practice Diary Grammar Analysis Flow). Total 84 automated tests, 100% pass (Backend Line Coverage: 74.34%, Frontend Components: 100%).
 
 ## 🧪 Automated Testing Suite Coverage (Vitest & Playwright)
 
@@ -156,7 +156,7 @@
   - Eksekusi idempotent migrasi skema tabel database (`initDB()`).
   - Eksekusi parameterized query `db.prepare`, `db.query`, dan `db.run`.
 
-### 2. ⚛️ Frontend Tests (Vitest + JSDOM — 24 Tests, 100% Core Coverage)
+### 2. ⚛️ Frontend Tests (Vitest + JSDOM + Testing Library — 34 Tests across 12 Files, 100% Component Coverage)
 - **File: `frontend/src/test/api.test.ts`**:
   - Injeksi otomatis header `Authorization: Bearer <token>` saat token ada di localStorage.
   - Auto-logout dan pembersihan session storage saat menerima HTTP 401 (skipAuthRedirect=false).
@@ -181,6 +181,18 @@
 - **File: `frontend/src/test/chunkFilters.test.ts`**:
   - Pencarian real-time case-insensitive pada frasa, arti bahasa Indonesia, dan contoh kalimat.
   - Penyaringan kategori dropdown (*IT & Daily, Formal Email, Workplace, dll.*).
+- **File: `frontend/src/test/UpdateBanner.test.tsx`**:
+  - Render banner update PWA saat update tersedia dan penanganan reload.
+- **File: `frontend/src/test/InstallPrompt.test.tsx`**:
+  - Deteksi event `beforeinstallprompt`, trigger modal install, dan persistensi dismiss di `sessionStorage`.
+- **File: `frontend/src/test/LegalPage.test.tsx`**:
+  - Render Privacy Policy & Terms of Service serta navigasi tombol kembali (`onBack`).
+- **File: `frontend/src/test/Settings.test.tsx`**:
+  - Render form profil user dan validasi ketidakcocokan konfirmasi password.
+- **File: `frontend/src/test/InterviewSimulator.test.tsx`**:
+  - Pemilihan role & scope interview, peluncuran simulator, input jawaban kandidat, dan penerimaan feedback recruiter.
+- **File: `frontend/src/test/JournalCoach.test.tsx`**:
+  - Render prompt refleksi harian dan update counter jumlah kata real-time saat mengetik.
 
 ### 3. 🎭 End-to-End Tests (Playwright — 2 Full Journey Tests)
 - **File: `frontend/e2e/app-journey.spec.ts`**:
