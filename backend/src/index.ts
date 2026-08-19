@@ -85,6 +85,8 @@ app.route('/api/audio', audioRouter);
 app.route('/api/transcribe', transcribeRouter);
 app.route('/api/notifications', notificationsRouter);
 
+export { app };
+
 export default {
   port: PORT,
   fetch: app.fetch,

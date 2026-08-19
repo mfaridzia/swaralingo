@@ -18,10 +18,17 @@ export default defineConfig({
   ],
   webServer: [
     {
+      command: 'bun run dev',
+      cwd: '../backend',
+      port: 3000,
+      reuseExistingServer: true,
+      timeout: 20000,
+    },
+    {
       command: 'bun --bun vite',
       port: 5173,
       reuseExistingServer: true,
-      timeout: 15000,
+      timeout: 20000,
     },
   ],
 });

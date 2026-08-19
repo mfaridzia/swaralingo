@@ -37,6 +37,8 @@ database.db
 
 # Test artifacts
 test-results/
+coverage/
+*/coverage/
 e2e-debug.png
 e2e-*.png
 *.tsbuildinfo

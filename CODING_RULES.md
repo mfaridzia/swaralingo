@@ -27,5 +27,13 @@ Dilarang mencoba-coba library baru atau menulis script debugging eksperimental l
 - Fetching data WAJIB menggunakan TanStack Query atau Server Actions. Dilarang `useEffect` untuk fetching data.
 - Elemen interaktif WAJIB accessible (ARIA labels, focus states).
 
-## 6. Memory Auto-Update Rule
+## 6. Mandatory Automated Testing Rule (Unit, Integration & E2E)
+- Setiap pembuatan **fitur baru**, **perubahan logika (refactor)**, atau **penambahan endpoint/komponen** WAJIB disertai pembuatan atau pembaruan test terkait.
+- **Backend**: Buat/update unit & integration test di `backend/src/test/` menggunakan Vitest (`bun test`). Pastikan logika route, middleware (auth/csrf/rate-limit), database query, dan mock API eksternal teruji.
+- **Frontend**: Buat/update unit & component test di `frontend/src/test/` menggunakan Vitest + JSDOM (`bun run test`) untuk helper, algoritma bisnis, dan state interceptor.
+- **End-to-End (E2E)**: Untuk alur user journey yang kritis (auth, form submission, navigasi), buat/update test Playwright di `frontend/e2e/` (`bun run test:e2e`).
+- AI Assistant WAJIB menjalankan suite test (`bun test`, `bun run test`, `bun run test:e2e`) dan memastikan **100% Pass (hijau)** sebelum menyatakan tugas selesai.
+
+## 7. Memory Auto-Update Rule
 Di akhir setiap sesi penyelesaian tugas, AI WAJIB memperbarui file `MEMORY.md` dengan status progress terbaru, keputusan arsitektur (ADR) baru, dan daftar next steps.
+

@@ -81,6 +81,7 @@
 - **ADR-067**: [Remove Offline-First, Replace with Network Resilience + PWA Enhancements](docs/adr/0067-remove-offline-first-network-resilience.md) — menghapus seluruh modul offline-first (Dexie.js, sync engine, merge/retry/backfill) karena bug arsitektural fatal dan ketidakcocokan fundamental dengan aplikasi yang bergantung pada AI server-side. Menggantinya dengan network resilience (TanStack Query retry + localStorage draft auto-save) dan PWA UX enhancements (InstallPrompt A2HS + UpdateBanner new-version notification). Supersedes ADR-058 dan ADR-059.
 - **ADR-068**: Optimasi performa login & dashboard loading. Root cause: 4 round trips sequential (auth → logs → chunks → stats), stats query `SELECT *` ambil semua kolom termasuk audio_base64, multiple `.filter()` pass di array. Fix: (1) `getInitialDashboardData()` helper pre-fetch logs (10) + chunks (10) paralel dan return di response auth — eliminasi 2 round trip; (2) stats query hanya SELECT kolom scoring (created_at, user_input, ai_feedback); (3) single-pass Map-based date indexing gantikan multiple `.filter()`; (4) frontend pre-populate TanStack Query cache via `setQueryData` dari response login — dashboard langsung render tanpa loading spinner. Backend deploy: wrangler 4.120.1 dengan `--config` absolute path karena root `wrangler.jsonc` override `backend/wrangler.toml`.
 - **ADR-069**: Optimasi inisialisasi database cold boot di production. Root cause: middleware auto-migration mengeksekusi `initDB()` secara sinkron yang memblokir request pertama (TTFB) hingga 20 detik untuk menjalankan ~34 query migrasi sequential ke Turso. Fix: mengubah eksekusi `initDB()` menjadi non-blocking asynchronous di background menggunakan `c.executionCtx.waitUntil` untuk platform Cloudflare Workers, sehingga request pertama direspon instan tanpa hambatan migrasi.
+- **ADR-070**: Implementasi Komprehensif Automated Testing Suite (Vitest Unit/Integration + Playwright E2E). Menambahkan backend unit & integration tests (`auth.test.ts`, `crud.test.ts`, `database.test.ts` — 25 passing tests) untuk memverifikasi PBKDF2 hashing, JWT verification, CSRF, IDOR isolation, dan pagination; frontend unit & logic tests (`api.test.ts`, `spacedRepetition.test.ts`, `vocalFillers.test.ts`, `streakCalculator.test.ts` — 15 passing tests); serta Playwright E2E test (`app-journey.spec.ts` — full user journey: register, dashboard, add vocabulary chunk, dropdown logout).
 
 ## 🎨 Design System & UI Updates
 
@@ -103,12 +104,122 @@
 9. **Privacy Policy & Terms of Service** — Halaman legal lengkap dengan routing `/privacy` dan `/terms`.
 10. **Contact Email Update** — `admin@swaralingo.dev` → `muhfaridzia@gmail.com`.
 11. **Auth UX Cleanup** — Hapus badge "Secured Client-Side Hashing (SHA-256)" yang membingungkan user.
+12. **Automated Testing Suite (Vitest + Playwright)** — Implementasi 48 Backend Tests (PBKDF2, JWT, CSRF, Rate Limiting, IDOR, CRUD, AI Gemini Mock, Whisper Transcribe Fallback, Audio Storage CRUD, Journals Reflection, Web Push Notifications), 24 Frontend Unit Tests (API fetch interceptor, SM-2 Spaced Repetition, Vocal Fillers, Streak & Badges, Shadowing Pronunciation Accuracy, Real-Time Chunk Search/Filters), dan 2 Playwright E2E Tests (Full User Registration Journey & Practice Diary Grammar Analysis Flow). Total 74 automated tests, 100% pass (Backend Line Coverage: 74.34%, Function Coverage: 82.23%, Frontend Core: 100%).
+
+## 🧪 Automated Testing Suite Coverage (Vitest & Playwright)
+
+### 1. 🛡️ Backend Tests (Vitest Unit & Integration — 48 Tests, 74.34% Line Coverage, 82.23% Functions)
+- **File: `backend/src/test/auth.test.ts`**:
+  - Hashing & verifikasi password PBKDF2 Web Crypto (100.000 iterasi, salt 16-byte hex).
+  - Penolakan verifikasi password yang salah.
+  - Keunikan salt untuk password identik.
+  - Signing & verifikasi JWT session token (HMAC-SHA256).
+  - Penolakan token palsu / tampered token / malformed token.
+  - `POST /api/auth/register` (status 201, verifikasi pencegahan bocoran hash password).
+  - Penolakan duplikasi email pendaftaran (status 400).
+  - Penolakan login password salah (status 401).
+  - `POST /api/auth/login` sukses dan injeksi cookie session `swaralingo_session` (HttpOnly, Secure, SameSite=None, Partitioned).
+  - `POST /api/auth/update-profile` dengan validasi session cookie.
+  - Penolakan akses update profil tanpa autentikasi (status 401).
+  - `POST /api/auth/logout` dan pembersihan cookie (`Max-Age=0`).
+- **File: `backend/src/test/analyze.test.ts` (Gemini AI Mock via `vi.mock`)**:
+  - Autentikasi wajib pada endpoint `/api/analyze` (401 jika unauthenticated).
+  - Analisis tata bahasa dengan mock respon Google Gemini AI (`@google/generative-ai`).
+  - Caching evaluasi di `analysis_cache` (panggilan kedua langsung dari DB tanpa menembak Gemini).
+  - Penanganan respon AI format non-JSON / raw text.
+  - Penjanaan tantangan harian dinamis `POST /api/analyze/challenge` berdasarkan riwayat error user.
+  - Penanganan error 502 saat output AI tidak valid format JSON.
+- **File: `backend/src/test/audio.test.ts` (Audio Storage & Transcription)**:
+  - Upload audio blob ke storage (`POST /api/audio`) menghasilkan `audioKey`.
+  - Fetch audio blob (`GET /api/audio/:key`).
+  - Proteksi IDOR: User B ditolak menghapus audio milik User A (status 403).
+  - Penghapusan audio sukses oleh pemilik (`DELETE /api/audio/:key`).
+  - Transkripsi suara (`POST /api/transcribe`) dengan fallback otomatis ke Gemini saat Cloudflare AI binding tidak ada.
+- **File: `backend/src/test/journals_notifications.test.ts`**:
+  - Penjanaan prompt refleksi AI harian (`GET /api/journals/prompt`).
+  - Pembuatan jurnal + deteksi mood emosional & AI reflection feedback (`POST /api/journals`).
+  - Validasi panjang konten minimal jurnal.
+  - Web push: `GET /api/notifications/vapid-public-key`.
+  - Web push: `POST /api/notifications/subscribe` (upsert subscription VAPID).
+  - Web push: `POST /api/notifications/unsubscribe`.
+- **File: `backend/src/test/security.test.ts` (CSRF & Rate Limiting)**:
+  - CSRF origin whitelist protection (penolakan request state-changing dari origin asing 403).
+  - Rate limiter middleware (trigger 429 Too Many Requests saat auth abuse).
+- **File: `backend/src/test/crud.test.ts`**:
+  - `POST /api/logs` & `GET /api/logs`: Pembuatan log dan pembacaan log user aktif.
+  - **IDOR Isolation**: User B dipastikan tidak bisa membaca log milik User A.
+  - Pagination query parameter `?limit=1`.
+  - `POST /api/chunks` & `GET /api/chunks`: Pembuatan chunks dan isolasi data per user.
+  - `POST /api/journals` & `GET /api/journals`: Pembuatan jurnal refleksi dan isolasi data.
+  - `GET /api/stats`: Agregasi data statistik, skor kelancaran harian, pertumbuhan mingguan, dan chartData 7 hari.
+- **File: `backend/src/test/database.test.ts`**:
+  - Eksekusi idempotent migrasi skema tabel database (`initDB()`).
+  - Eksekusi parameterized query `db.prepare`, `db.query`, dan `db.run`.
+
+### 2. ⚛️ Frontend Tests (Vitest + JSDOM — 24 Tests, 100% Core Coverage)
+- **File: `frontend/src/test/api.test.ts`**:
+  - Injeksi otomatis header `Authorization: Bearer <token>` saat token ada di localStorage.
+  - Auto-logout dan pembersihan session storage saat menerima HTTP 401 (skipAuthRedirect=false).
+  - Penanganan khusus `skipAuthRedirect=true` saat login gagal (tidak auto-redirect).
+  - Event dispatcher custom `showToast` untuk notifikasi melayang.
+- **File: `frontend/src/test/spacedRepetition.test.ts`**:
+  - Algoritma SuperMemo SM-2: Reset interval ke 1 dan repetisi ke 0 saat rating *Hard* (1).
+  - Progresi repetisi dan interval saat rating *Good* (3).
+  - Kenaikan easiness factor saat rating *Easy* (5).
+  - Batas minimum floor easiness factor (`>= 1.3`).
+- **File: `frontend/src/test/vocalFillers.test.ts`**:
+  - Deteksi kata filler (*um*, *uh*, *like*, *you know*, *actually*, *basically*).
+  - Boundary-aware regex agar kata seperti *umbrella* / *unlike* tidak terhitung.
+  - Penanganan input teks kosong/spasi.
+- **File: `frontend/src/test/streakCalculator.test.ts`**:
+  - Perhitungan streak aktif berbasis tanggal ISO UTC berurutan.
+  - Reset streak ke 0 saat rantai tanggal terputus.
+  - Logika pembukaan lencana/badges (*Starter*, *Rising*, *Dedicated*, *Elite*).
+- **File: `frontend/src/test/shadowing.test.ts`**:
+  - Algoritma komputasi skor akurasi kemiripan pengucapan (Pronunciation Word-Matching).
+  - Evaluasi kata-kata yang cocok vs kata yang terlewatkan (missing words).
+- **File: `frontend/src/test/chunkFilters.test.ts`**:
+  - Pencarian real-time case-insensitive pada frasa, arti bahasa Indonesia, dan contoh kalimat.
+  - Penyaringan kategori dropdown (*IT & Daily, Formal Email, Workplace, dll.*).
+
+### 3. 🎭 End-to-End Tests (Playwright — 2 Full Journey Tests)
+- **File: `frontend/e2e/app-journey.spec.ts`**:
+  - Kunjungan Landing Page (`/`).
+  - Navigasi ke form Sign In → beralih ke form Register (Create Account).
+  - Registrasi user baru (Nama, Email, Password).
+  - Verifikasi redirect ke Dashboard dan render nama user di header.
+  - Navigasi ke tab Chunks (`/dashboard/chunks`).
+  - Input frasa baru (*English Phrase*, *Meaning*, *Example*) → submit *Add to Chunks Bank*.
+  - Verifikasi frasa muncul di list Saved Chunks.
+  - Buka Profile Dropdown → klik *Logout Account* → verifikasi kembali ke Landing Page.
+- **File: `frontend/e2e/diary-flow.spec.ts`**:
+  - Registrasi user baru dan masuk ke halaman Practice Diary.
+  - Mengetik kalimat latihan dengan kata jeda (*vocal filler* "like").
+  - Verifikasi panel peringatan Vocal Fillers muncul.
+  - Klik *Analyze & Naturalize* → verifikasi feedback AI Speaking Coach muncul.
+  - Klik *Save to Diary* → verifikasi log latihan tersimpan di list Saved Records.
+
+### 🛠️ Quick Test Commands
+- Backend: `cd backend && bun test`
+- Frontend: `cd frontend && bun run test`
+- E2E: `cd frontend && bun run test:e2e`
 
 ## 🐛 Known Issues & Technical Debts
 
-- Stale service worker dari production build/deploy sebelumnya mungkin masih registered di browser — unregister manual via DevTools > Application > Service Workers.
-- `client_uuid` columns dan unique indexes masih ada di database (logs, chunks, journals) — harmless, cleanup next migration cycle.
-- Safari ITP tidak dukung Partitioned cookie (CHIPS) — solusi final: host FE + API di same domain.
+1. **Safari ITP vs Third-Party / Partitioned (CHIPS) HttpOnly Cookies**:
+   - **Konteks Masalah**: Saat ini Frontend di-host di Vercel (`swaralingo.vercel.app`) dan API Backend di Cloudflare Workers (`swaralingo-api.muhfaridzia.workers.dev`). Karena beda top-level domain (`vercel.app` vs `workers.dev`), request `credentials: 'include'` dianggap sebagai *Cross-Site / Third-Party Cookie*.
+   - **Dampak Browser**: 
+     - Chrome, Edge, dan Firefox mendukung atribut `Partitioned` (CHIPS) sehingga session cookie `swaralingo_session` tetap terkirim secara aman.
+     - Safari (di iOS/iPadOS dan macOS) menerapkan *Intelligent Tracking Prevention (ITP)* yang memblokir semua Third-Party Cookies dan secara eksplisit menolak dukungan `Partitioned` (CHIPS). Akibatnya, user Safari sering mengalami sesi mental/unauthorized (401).
+   - **Solusi Final**: Migrasi ke *Same-Domain / Custom Domain Architecture* (misal: FE di `swaralingo.com` atau `app.swaralingo.com` dan API di `api.swaralingo.com`), sehingga cookie otomatis menjadi *First-Party Cookie* (`SameSite=Lax`), aman dan kompatibel 100% di semua device Apple tanpa perlu atribut `Partitioned`.
+
+2. **Stale Service Worker Cache pada Browser Klien**:
+   - **Konteks**: Service worker dari versi rilis PWA sebelumnya mungkin masih aktif/pre-cached di browser pengguna lama.
+   - **Mitigasi**: Telah disediakan komponen `UpdateBanner.tsx` dan pengecekan pembaruan otomatis per jam, namun jika terjadi cache clash, pengguna dapat melakukan unregister manual via `DevTools > Application > Service Workers` atau hard-refresh (`Ctrl+F5` / `Cmd+Shift+R`).
+
+3. **Legacy Database Columns & Index (Sisa Offline-First PWA)**:
+   - **Konteks**: Kolom `client_uuid`, `updated_at`, `deleted_at`, serta unique index `idx_*_client_uuid` pada tabel `practice_logs`, `sentence_chunks`, dan `journals` masih tersimpan di database SQLite/Turso pasca penghapusan arsitektur offline-first (ADR-067).
+   - **Status**: *Harmless* (tidak mengganggu performa dan tidak memicu error). Akan dibersihkan (cleanup / DROP column) pada siklus migrasi skema database berikutnya.
 
 ## 🔮 Future Backlog (Real-Time SSE & WebSockets)
 

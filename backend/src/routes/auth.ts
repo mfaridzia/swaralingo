@@ -14,7 +14,7 @@ const getOAuthClient = () => {
   return new OAuth2Client(clientId);
 };
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
@@ -39,7 +39,7 @@ async function hashPassword(password: string): Promise<string> {
   return `${saltHex}:${hashHex}`;
 }
 
-async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   if (storedHash.startsWith('$2')) {
     if (typeof Bun !== 'undefined') {
       return await Bun.password.verify(password, storedHash);
